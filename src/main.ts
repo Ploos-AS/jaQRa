@@ -2,7 +2,7 @@ import './style.css';
 import { renderSVG } from './qr';
 import { styledSVG, styledPNG, type ModuleStyle } from './styling';
 import { verifySVG } from './verify';
-import { parseCSV, batchZip } from './batch';
+import { parseCSV, batchFilesZip, type BatchFormat } from './batch';
 import { overlayLogo, readLogo } from './logo';
 import { frameTemplates, frameCopy, type FrameTemplate } from './frames';
 import { presets, contrastRatio, type QRDesign } from './design';
@@ -118,6 +118,7 @@ frameSubtitle.addEventListener('input',updateFrame);
 printButton.addEventListener('click',()=>{if(!latestSVG)return;updateFrame();window.print();});
 const batchFile=document.querySelector<HTMLInputElement>('#batch-file')!;
 const batchButton=document.querySelector<HTMLButtonElement>('#batch-export')!;
+const batchFormat=document.querySelector<HTMLSelectElement>('#batch-format')!;
 const batchStatus=document.querySelector<HTMLParagraphElement>('#batch-status')!;
 batchButton.addEventListener('click',async()=>{
  const file=batchFile.files?.[0];if(!file){batchStatus.textContent='Select a CSV file first.';return;}
@@ -125,7 +126,8 @@ batchButton.addEventListener('click',async()=>{
  try{
   const rows=parseCSV(await file.text());
   if(!rows.length)throw new Error('CSV contains no data rows.');
-  const output:Array<{name:string;svg:string}>=[];
+  const output:Array<{name:string;data:Uint8Array}>=[];
+  const format=batchFormat.value as BatchFormat;
   for(let i=0;i<rows.length;i++){
    batchStatus.textContent='Validating '+(i+1)+' of '+rows.length+'…';
    const row=rows[i];
@@ -133,9 +135,14 @@ batchButton.addEventListener('click',async()=>{
    const svg=logoData?overlayLogo(base,{dataURL:logoData,sizePercent:Number(logoSize.value)}):base;
    const result=await verifySVG(svg,row.payload);
    if(!result.valid)throw new Error('Row '+(i+2)+' failed QR validation: '+result.message);
-   output.push({name:row.name,svg});
+   if(format==='png'){
+    batchStatus.textContent='Rendering PNG '+(i+1)+' of '+rows.length+'…';
+    const dataURL=await styledPNG(svg);
+    const bytes=new Uint8Array(await (await fetch(dataURL)).arrayBuffer());
+    output.push({name:row.name,data:bytes});
+   }else output.push({name:row.name,data:new TextEncoder().encode(svg)});
   }
-  download(new Blob([batchZip(output) as BlobPart],{type:'application/zip'}),'jaqra-batch.zip');
+  download(new Blob([batchFilesZip(output,format) as BlobPart],{type:'application/zip'}),'jaqra-batch-'+format+'.zip');
   batchStatus.textContent='Created '+output.length+' validated QR codes.';
  }catch(err){batchStatus.textContent=err instanceof Error?err.message:'Batch generation failed.';}
  finally{batchButton.disabled=false;}
