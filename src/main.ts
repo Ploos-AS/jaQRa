@@ -1,5 +1,6 @@
 import './style.css';
 import { renderSVG, renderPNG } from './qr';
+import { presets, contrastRatio, type QRDesign } from './design';
 import { buildPayload, fields, type QRKind } from './payloads';
 
 const root = document.querySelector<HTMLDivElement>('#app')!;
@@ -8,7 +9,7 @@ root.innerHTML = `
   <section class="hero"><div class="eyebrow">FREE • PRIVATE • LOCAL-FIRST</div><h1>Make a QR code.<br><em>Make it yours.</em></h1><p>Create high-quality QR codes in your browser. No account. No tracking. No expiration.</p></section>
   <section class="workspace" aria-label="QR code creator">
     <div class="controls"><h2>Create your code</h2><label for="kind">QR code type</label><select id="kind"><option value="url">Website URL</option><option value="text">Plain text</option><option value="wifi">Wi-Fi</option><option value="vcard">Contact (vCard)</option><option value="email">Email</option><option value="sms">SMS</option><option value="phone">Phone</option><option value="geo">Location</option></select><div id="fields"></div>
-    <label for="color">QR code color</label><input id="color" type="color" value="#12243c">
+    <h3>Design Studio</h3><label for="preset">Color preset</label><select id="preset"><option>Classic</option><option>Midnight</option><option>Forest</option><option>Ocean</option><option>Ink</option><option value="custom">Custom</option></select><div class="design-colors"><div><label for="color">QR color</label><input id="color" type="color" value="#12243c"></div><div><label for="background">Background</label><input id="background" type="color" value="#ffffff"></div></div><label for="margin">Quiet zone (modules)</label><input id="margin" type="number" min="4" max="12" step="1" value="4"><p class="hint" id="contrast" aria-live="polite"></p>
     <p class="hint">Your content stays in this browser. Static QR codes do not expire.</p><p class="error" id="error" role="alert" aria-live="polite"></p></div>
     <div class="result"><div class="preview" id="preview" aria-label="QR code preview"><span>Enter a URL or text to preview your QR code.</span></div>
     <div class="actions"><button id="svg" disabled>Download SVG</button><button id="png" disabled>Download PNG</button></div></div>
@@ -18,6 +19,11 @@ root.innerHTML = `
 const kind = document.querySelector<HTMLSelectElement>('#kind')!;
 const inputs = document.querySelector<HTMLDivElement>('#fields')!;
 const color = document.querySelector<HTMLInputElement>('#color')!;
+const background = document.querySelector<HTMLInputElement>('#background')!;
+const margin = document.querySelector<HTMLInputElement>('#margin')!;
+const preset = document.querySelector<HTMLSelectElement>('#preset')!;
+const contrast = document.querySelector<HTMLParagraphElement>('#contrast')!;
+function design(): QRDesign { return {foreground:color.value,background:background.value,margin:Number(margin.value)}; }
 const preview = document.querySelector<HTMLDivElement>('#preview')!;
 const error = document.querySelector<HTMLParagraphElement>('#error')!;
 const svgButton = document.querySelector<HTMLButtonElement>('#svg')!;
@@ -31,7 +37,9 @@ async function update() {
   const current = ++request;
   try {
     const text = buildPayload(kind.value as QRKind, values());
-    const svg = await renderSVG(text, color.value);
+    const currentDesign = design();
+    contrast.textContent = 'Contrast: '+contrastRatio(currentDesign.foreground,currentDesign.background).toFixed(1)+':1';
+    const svg = await renderSVG(text, currentDesign);
     if (current !== request) return;
     latestSVG = svg;
     latestPayload = text;
@@ -58,11 +66,14 @@ function download(blob: Blob, name: string) {
 kind.addEventListener('change', makeFields);
 inputs.addEventListener('input', update);
 inputs.addEventListener('change', update);
-color.addEventListener('input', update);
+color.addEventListener('input', () => {preset.value='custom';void update();});
+background.addEventListener('input', () => {preset.value='custom';void update();});
+margin.addEventListener('input', update);
+preset.addEventListener('change', () => {const p=presets[preset.value];if(p){color.value=p.foreground;background.value=p.background;margin.value=String(p.margin);}void update();});
 svgButton.addEventListener('click', () => { if (latestSVG) download(new Blob([latestSVG], { type: 'image/svg+xml' }), 'jaqra-qr.svg'); });
 pngButton.addEventListener('click', async () => {
   try {
-    const png = await renderPNG(latestPayload, color.value);
+    const png = await renderPNG(latestPayload, design());
     const response = await fetch(png);
     download(await response.blob(), 'jaqra-qr.png');
   } catch { error.textContent = 'Unable to export PNG.'; }
