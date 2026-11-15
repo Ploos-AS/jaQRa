@@ -1,0 +1,15 @@
+services:
+  jaqra:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:18080:8080"
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    tmpfs:
+      - /tmp
+      - /config
+      - /data
