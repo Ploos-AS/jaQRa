@@ -2,3 +2,15 @@
 .controls input:not([type=color]),.controls select,.controls textarea{width:100%;border:1px solid #cdd9e4;border-radius:12px;padding:12px;font:inherit;background:#fff}.controls input[type=checkbox]{width:auto}.controls select{min-height:45px}.controls label{margin-top:18px}
 
 .design-colors{display:flex;gap:32px;flex-wrap:wrap}.design-colors label{margin-bottom:5px}.controls h3{font-size:19px;margin:32px 0 10px}.controls input[type=color]{width:72px;height:48px;padding:2px;border:1px solid #cdd9e4;border-radius:8px}.controls input[type=number]{max-width:110px}
+
+#print-sheet{display:none}
+@media print{
+ @page{size:A4 portrait;margin:15mm}
+ body{background:#fff;color:#111}
+ header,.hero,.workspace,footer{display:none!important}
+ #print-sheet{display:flex!important;min-height:250mm;flex-direction:column;align-items:center;justify-content:center;text-align:center;break-inside:avoid;font-family:system-ui,sans-serif}
+ #print-title{font-size:32pt;line-height:1.2;margin:0 0 16mm;overflow-wrap:anywhere}
+ #print-code{width:110mm;height:110mm}
+ #print-code svg{width:100%;height:100%}
+ #print-subtitle{font-size:17pt;max-width:160mm;overflow-wrap:anywhere;margin:15mm 0 0}
+}
