@@ -1,4 +1,5 @@
 import QRCode from 'qrcode';
+import { validateDesign, type QRDesign } from './design';
 
 export function validatePayload(value: string): string {
   const text = value.trim();
@@ -7,10 +8,12 @@ export function validatePayload(value: string): string {
   return text;
 }
 
-export async function renderSVG(value: string, foreground = '#12243c'): Promise<string> {
-  return QRCode.toString(validatePayload(value), { type: 'svg', errorCorrectionLevel: 'H', margin: 4, color: { dark: foreground, light: '#ffffff' }, width: 512 });
+export async function renderSVG(value: string, design: QRDesign = { foreground: '#12243c', background: '#ffffff', margin: 4 }): Promise<string> {
+  const { foreground, background, margin } = validateDesign(design);
+  return QRCode.toString(validatePayload(value), { type: 'svg', errorCorrectionLevel: 'H', margin, color: { dark: foreground, light: background }, width: 512 });
 }
 
 export async function renderPNG(value: string, foreground = '#12243c'): Promise<string> {
-  return QRCode.toDataURL(validatePayload(value), { type: 'image/png', errorCorrectionLevel: 'H', margin: 4, color: { dark: foreground, light: '#ffffff' }, width: 1024 });
+  const { foreground, background, margin } = validateDesign(design);
+  return QRCode.toDataURL(validatePayload(value), { type: 'image/png', errorCorrectionLevel: 'H', margin, color: { dark: foreground, light: background }, width: 1024 });
 }
