@@ -33,3 +33,13 @@ export function batchZip(entries: Array<{name:string;svg:string}>):Uint8Array {
  entries.forEach((entry,i)=>{const safe=entry.name.normalize('NFKD').replace(/[^a-zA-Z0-9_-]+/g,'-').slice(0,48)||'qr';files[String(i+1).padStart(3,'0')+'-'+safe+'.svg']=strToU8(entry.svg);});
  return zipSync(files,{level:6});
 }
+
+export type BatchFormat = 'svg' | 'png';
+export function batchFilesZip(entries:Array<{name:string;data:Uint8Array}>,format:BatchFormat):Uint8Array {
+ const files:Record<string,Uint8Array>={};
+ entries.forEach((entry,i)=>{
+  const safe=entry.name.normalize('NFKD').replace(/[^a-zA-Z0-9_-]+/g,'-').slice(0,48)||'qr';
+  files[String(i+1).padStart(3,'0')+'-'+safe+'.'+format]=entry.data;
+ });
+ return zipSync(files,{level:6});
+}
