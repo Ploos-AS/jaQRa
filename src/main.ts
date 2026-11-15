@@ -3,6 +3,7 @@ import { renderSVG } from './qr';
 import { styledSVG, styledPNG, type ModuleStyle } from './styling';
 import { verifySVG } from './verify';
 import { parseCSV, batchFilesZip, type BatchFormat } from './batch';
+import { defaultPaper, labelLayout, type PaperSize, type LabelCount } from './labels';
 import { overlayLogo, readLogo } from './logo';
 import { frameTemplates, frameCopy, type FrameTemplate } from './frames';
 import { presets, contrastRatio, type QRDesign } from './design';
@@ -19,7 +20,7 @@ root.innerHTML = `
     <div class="result"><div class="preview" id="preview" aria-label="QR code preview"><span>Enter a URL or text to preview your QR code.</span></div>
     <p class="hint" id="scan-status" role="status" aria-live="polite"></p><div class="actions"><button id="svg" disabled>Download SVG</button><button id="png" disabled>Download PNG</button><button id="print" disabled>Print A4 / Save PDF</button></div></div>
   </section>
-  <section id="print-sheet" aria-label="Printable QR sign"><h1 id="print-title"></h1><div id="print-code"></div><p id="print-subtitle"></p></section><footer>Made by Ploos AS · Privacy-first QR generation</footer>
+  <section id="label-sheets" aria-label="Printable batch labels"></section><section id="print-sheet" aria-label="Printable QR sign"><h1 id="print-title"></h1><div id="print-code"></div><p id="print-subtitle"></p></section><footer>Made by Ploos AS · Privacy-first QR generation</footer>
 `;
 const kind = document.querySelector<HTMLSelectElement>('#kind')!;
 const inputs = document.querySelector<HTMLDivElement>('#fields')!;
@@ -120,6 +121,40 @@ const batchFile=document.querySelector<HTMLInputElement>('#batch-file')!;
 const batchButton=document.querySelector<HTMLButtonElement>('#batch-export')!;
 const batchFormat=document.querySelector<HTMLSelectElement>('#batch-format')!;
 const batchStatus=document.querySelector<HTMLParagraphElement>('#batch-status')!;
+const labelPaper=document.querySelector<HTMLSelectElement>('#label-paper')!;
+const labelCount=document.querySelector<HTMLSelectElement>('#label-count')!;
+const labelPrint=document.querySelector<HTMLButtonElement>('#label-print')!;
+const labelSheets=document.querySelector<HTMLElement>('#label-sheets')!;
+labelPaper.value=defaultPaper(navigator.language);
+labelPrint.addEventListener('click',async()=>{
+ const file=batchFile.files?.[0];if(!file){batchStatus.textContent='Select a CSV file first.';return;}
+ labelPrint.disabled=true;
+ try{
+  const rows=parseCSV(await file.text());if(!rows.length)throw new Error('CSV contains no data rows.');
+  const paper=labelPaper.value as PaperSize,count=Number(labelCount.value) as LabelCount;
+  const layout=labelLayout(paper,count);
+  labelSheets.replaceChildren();
+  for(let i=0;i<rows.length;i++){
+   batchStatus.textContent='Preparing label '+(i+1)+' of '+rows.length+'…';
+   const row=rows[i];
+   const base=moduleStyle.value==='square'?await renderSVG(row.payload,design()):styledSVG(row.payload,design(),moduleStyle.value as ModuleStyle);
+   const svg=logoData?overlayLogo(base,{dataURL:logoData,sizePercent:Number(logoSize.value)}):base;
+   const check=await verifySVG(svg,row.payload);
+   if(!check.valid)throw new Error('Row '+(i+2)+' failed QR validation: '+check.message);
+   if(i%count===0){const sheet=document.createElement('div');sheet.className='label-page';sheet.style.width=layout.page.width+'mm';sheet.style.height=layout.page.height+'mm';sheet.style.gridTemplateColumns='repeat('+layout.columns+',1fr)';sheet.style.gridTemplateRows='repeat('+layout.rows+',1fr)';sheet.style.gap='4mm';labelSheets.append(sheet);}
+   const cell=document.createElement('div');cell.className='label-cell';
+   const code=document.createElement('div');code.className='label-code';code.innerHTML=svg;
+   const caption=document.createElement('span');caption.textContent=row.name;
+   cell.append(code,caption);labelSheets.lastElementChild!.append(cell);
+  }
+  document.body.classList.add('printing-labels');
+  document.body.dataset.paper=paper;
+  batchStatus.textContent='Ready to print '+rows.length+' labels. Select '+(paper==='a4'?'A4':'US Letter')+' in your browser print dialog.';
+  window.print();
+ }catch(err){batchStatus.textContent=err instanceof Error?err.message:'Unable to prepare labels.';labelSheets.replaceChildren();}
+ finally{labelPrint.disabled=false;}
+});
+window.addEventListener('afterprint',()=>{document.body.classList.remove('printing-labels');});
 batchButton.addEventListener('click',async()=>{
  const file=batchFile.files?.[0];if(!file){batchStatus.textContent='Select a CSV file first.';return;}
  batchButton.disabled=true;
