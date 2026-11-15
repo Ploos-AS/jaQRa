@@ -20,6 +20,7 @@ root.innerHTML = `
     <div class="result"><div class="preview" id="preview" aria-label="QR code preview"><span>Enter a URL or text to preview your QR code.</span></div>
     <p class="hint" id="scan-status" role="status" aria-live="polite"></p><div class="actions"><button id="svg" disabled>Download SVG</button><button id="png" disabled>Download PNG</button><button id="print" disabled>Print A4 / Save PDF</button></div></div>
   </section>
+  <section class="batch-panel"><h2>Batch Studio</h2><p>Import a CSV file with <code>name,payload</code> columns (name optional). Up to 100 QR codes.</p><label for="batch-file">CSV file</label><input id="batch-file" type="file" accept=".csv,text/csv"><label for="batch-format">ZIP format</label><select id="batch-format"><option value="svg">SVG</option><option value="png">PNG</option></select><button id="batch-export" type="button">Generate ZIP</button><h3>Print labels</h3><label for="label-paper">Paper size</label><select id="label-paper"><option value="a4">A4</option><option value="letter">US Letter</option><option value="a5">A5</option><option value="legal">US Legal</option></select><label for="label-count">Labels per sheet</label><select id="label-count"><option>1</option><option>2</option><option selected>4</option><option>6</option><option>8</option><option>10</option></select><label for="label-margin">Page margins (mm)</label><input id="label-margin" type="number" min="5" max="25" value="12"><label for="label-gap">Label gap (mm)</label><input id="label-gap" type="number" min="0" max="15" value="4"><button id="label-print" type="button">Print labels / Save PDF</button><p id="batch-status" role="status" aria-live="polite"></p></section>
   <section id="label-sheets" aria-label="Printable batch labels"></section><section id="print-sheet" aria-label="Printable QR sign"><h1 id="print-title"></h1><div id="print-code"></div><p id="print-subtitle"></p></section><footer>Made by Ploos AS · Privacy-first QR generation</footer>
 `;
 const kind = document.querySelector<HTMLSelectElement>('#kind')!;
@@ -123,6 +124,8 @@ const batchFormat=document.querySelector<HTMLSelectElement>('#batch-format')!;
 const batchStatus=document.querySelector<HTMLParagraphElement>('#batch-status')!;
 const labelPaper=document.querySelector<HTMLSelectElement>('#label-paper')!;
 const labelCount=document.querySelector<HTMLSelectElement>('#label-count')!;
+const labelMargin=document.querySelector<HTMLInputElement>('#label-margin')!;
+const labelGap=document.querySelector<HTMLInputElement>('#label-gap')!;
 const labelPrint=document.querySelector<HTMLButtonElement>('#label-print')!;
 const labelSheets=document.querySelector<HTMLElement>('#label-sheets')!;
 labelPaper.value=defaultPaper(navigator.language);
@@ -132,7 +135,8 @@ labelPrint.addEventListener('click',async()=>{
  try{
   const rows=parseCSV(await file.text());if(!rows.length)throw new Error('CSV contains no data rows.');
   const paper=labelPaper.value as PaperSize,count=Number(labelCount.value) as LabelCount;
-  const layout=labelLayout(paper,count);
+  const marginMm=Number(labelMargin.value),gapMm=Number(labelGap.value);
+  const layout=labelLayout(paper,count,marginMm,gapMm);
   labelSheets.replaceChildren();
   for(let i=0;i<rows.length;i++){
    batchStatus.textContent='Preparing label '+(i+1)+' of '+rows.length+'…';
@@ -141,7 +145,7 @@ labelPrint.addEventListener('click',async()=>{
    const svg=logoData?overlayLogo(base,{dataURL:logoData,sizePercent:Number(logoSize.value)}):base;
    const check=await verifySVG(svg,row.payload);
    if(!check.valid)throw new Error('Row '+(i+2)+' failed QR validation: '+check.message);
-   if(i%count===0){const sheet=document.createElement('div');sheet.className='label-page';sheet.style.width=layout.page.width+'mm';sheet.style.height=layout.page.height+'mm';sheet.style.gridTemplateColumns='repeat('+layout.columns+',1fr)';sheet.style.gridTemplateRows='repeat('+layout.rows+',1fr)';sheet.style.gap='4mm';labelSheets.append(sheet);}
+   if(i%count===0){const sheet=document.createElement('div');sheet.className='label-page';sheet.style.width=layout.page.width+'mm';sheet.style.height=layout.page.height+'mm';sheet.style.gridTemplateColumns='repeat('+layout.columns+',1fr)';sheet.style.gridTemplateRows='repeat('+layout.rows+',1fr)';sheet.style.gap=gapMm+'mm';sheet.style.padding=marginMm+'mm';labelSheets.append(sheet);}
    const cell=document.createElement('div');cell.className='label-cell';
    const code=document.createElement('div');code.className='label-code';code.innerHTML=svg;
    const caption=document.createElement('span');caption.textContent=row.name;
@@ -149,7 +153,7 @@ labelPrint.addEventListener('click',async()=>{
   }
   document.body.classList.add('printing-labels');
   document.body.dataset.paper=paper;
-  batchStatus.textContent='Ready to print '+rows.length+' labels. Select '+(paper==='a4'?'A4':'US Letter')+' in your browser print dialog.';
+  batchStatus.textContent='Ready to print '+rows.length+' labels. Select '+layout.page.label+' in your browser print dialog.';
   window.print();
  }catch(err){batchStatus.textContent=err instanceof Error?err.message:'Unable to prepare labels.';labelSheets.replaceChildren();}
  finally{labelPrint.disabled=false;}
