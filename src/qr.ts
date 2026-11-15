@@ -13,7 +13,7 @@ export async function renderSVG(value: string, design: QRDesign = { foreground: 
   return QRCode.toString(validatePayload(value), { type: 'svg', errorCorrectionLevel: 'H', margin, color: { dark: foreground, light: background }, width: 512 });
 }
 
-export async function renderPNG(value: string, foreground = '#12243c'): Promise<string> {
+export async function renderPNG(value: string, design: QRDesign = { foreground: '#12243c', background: '#ffffff', margin: 4 }): Promise<string> {
   const { foreground, background, margin } = validateDesign(design);
   return QRCode.toDataURL(validatePayload(value), { type: 'image/png', errorCorrectionLevel: 'H', margin, color: { dark: foreground, light: background }, width: 1024 });
 }
