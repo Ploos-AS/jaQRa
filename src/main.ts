@@ -2,6 +2,7 @@ import './style.css';
 import { renderSVG } from './qr';
 import { styledSVG, styledPNG, type ModuleStyle } from './styling';
 import { verifySVG } from './verify';
+import { parseCSV, batchZip } from './batch';
 import { overlayLogo, readLogo } from './logo';
 import { frameTemplates, frameCopy, type FrameTemplate } from './frames';
 import { presets, contrastRatio, type QRDesign } from './design';
@@ -115,6 +116,30 @@ frameTemplate.addEventListener('change',()=>{const t=frameTemplates[frameTemplat
 frameTitle.addEventListener('input',updateFrame);
 frameSubtitle.addEventListener('input',updateFrame);
 printButton.addEventListener('click',()=>{if(!latestSVG)return;updateFrame();window.print();});
+const batchFile=document.querySelector<HTMLInputElement>('#batch-file')!;
+const batchButton=document.querySelector<HTMLButtonElement>('#batch-export')!;
+const batchStatus=document.querySelector<HTMLParagraphElement>('#batch-status')!;
+batchButton.addEventListener('click',async()=>{
+ const file=batchFile.files?.[0];if(!file){batchStatus.textContent='Select a CSV file first.';return;}
+ batchButton.disabled=true;
+ try{
+  const rows=parseCSV(await file.text());
+  if(!rows.length)throw new Error('CSV contains no data rows.');
+  const output:Array<{name:string;svg:string}>=[];
+  for(let i=0;i<rows.length;i++){
+   batchStatus.textContent='Validating '+(i+1)+' of '+rows.length+'…';
+   const row=rows[i];
+   const base=moduleStyle.value==='square'?await renderSVG(row.payload,design()):styledSVG(row.payload,design(),moduleStyle.value as ModuleStyle);
+   const svg=logoData?overlayLogo(base,{dataURL:logoData,sizePercent:Number(logoSize.value)}):base;
+   const result=await verifySVG(svg,row.payload);
+   if(!result.valid)throw new Error('Row '+(i+2)+' failed QR validation: '+result.message);
+   output.push({name:row.name,svg});
+  }
+  download(new Blob([batchZip(output) as BlobPart],{type:'application/zip'}),'jaqra-batch.zip');
+  batchStatus.textContent='Created '+output.length+' validated QR codes.';
+ }catch(err){batchStatus.textContent=err instanceof Error?err.message:'Batch generation failed.';}
+ finally{batchButton.disabled=false;}
+});
 makeFields();
 frameTemplate.dispatchEvent(new Event('change'));
 if ('serviceWorker' in navigator) window.addEventListener('load', () => { navigator.serviceWorker.register('/sw.js').catch(() => {}); });
