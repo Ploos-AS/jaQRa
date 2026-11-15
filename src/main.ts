@@ -1,6 +1,7 @@
 import './style.css';
 import { renderSVG } from './qr';
 import { styledSVG, styledPNG, type ModuleStyle } from './styling';
+import { verifySVG } from './verify';
 import { presets, contrastRatio, type QRDesign } from './design';
 import { buildPayload, fields, type QRKind } from './payloads';
 
@@ -13,7 +14,7 @@ root.innerHTML = `
     <h3>Design Studio</h3><label for="preset">Color preset</label><select id="preset"><option>Classic</option><option>Midnight</option><option>Forest</option><option>Ocean</option><option>Ink</option><option value="custom">Custom</option></select><div class="design-colors"><div><label for="color">QR color</label><input id="color" type="color" value="#12243c"></div><div><label for="background">Background</label><input id="background" type="color" value="#ffffff"></div></div><label for="module-style">Module style</label><select id="module-style"><option value="square">Classic squares</option><option value="rounded">Soft rounded</option><option value="dots">Dots</option></select><label for="margin">Quiet zone (modules)</label><input id="margin" type="number" min="4" max="12" step="1" value="4"><p class="hint" id="contrast" aria-live="polite"></p>
     <p class="hint">Your content stays in this browser. Static QR codes do not expire.</p><p class="error" id="error" role="alert" aria-live="polite"></p></div>
     <div class="result"><div class="preview" id="preview" aria-label="QR code preview"><span>Enter a URL or text to preview your QR code.</span></div>
-    <div class="actions"><button id="svg" disabled>Download SVG</button><button id="png" disabled>Download PNG</button></div></div>
+    <p class="hint" id="scan-status" role="status" aria-live="polite"></p><div class="actions"><button id="svg" disabled>Download SVG</button><button id="png" disabled>Download PNG</button></div></div>
   </section>
   <footer>Made by Ploos AS · Privacy-first QR generation</footer>
 `;
@@ -28,6 +29,7 @@ const contrast = document.querySelector<HTMLParagraphElement>('#contrast')!;
 function design(): QRDesign { return {foreground:color.value,background:background.value,margin:Number(margin.value)}; }
 const preview = document.querySelector<HTMLDivElement>('#preview')!;
 const error = document.querySelector<HTMLParagraphElement>('#error')!;
+const scanStatus = document.querySelector<HTMLParagraphElement>('#scan-status')!;
 const svgButton = document.querySelector<HTMLButtonElement>('#svg')!;
 const pngButton = document.querySelector<HTMLButtonElement>('#png')!;
 let latestSVG = '';
@@ -43,16 +45,22 @@ async function update() {
     contrast.textContent = 'Contrast: '+contrastRatio(currentDesign.foreground,currentDesign.background).toFixed(1)+':1';
     const svg = moduleStyle.value === 'square' ? await renderSVG(text, currentDesign) : styledSVG(text, currentDesign, moduleStyle.value as ModuleStyle);
     if (current !== request) return;
-    latestSVG = svg;
-    latestPayload = text;
+    latestSVG = '';
+    latestPayload = '';
     preview.innerHTML = svg;
+    scanStatus.textContent = 'Checking scannability…';
+    svgButton.disabled = true;
+    pngButton.disabled = true;
+    const check = await verifySVG(svg, text);
+    if (current !== request) return;
+    scanStatus.textContent = check.message;
     error.textContent = '';
-    svgButton.disabled = false;
-    pngButton.disabled = false;
+    if (check.valid) { latestSVG = svg; latestPayload = text; svgButton.disabled = false; pngButton.disabled = false; }
   } catch (err) {
     if (current !== request) return;
     latestSVG = '';
     latestPayload = '';
+    scanStatus.textContent = '';
     preview.textContent = 'Enter a URL or text to preview your QR code.';
     error.textContent = err instanceof Error ? err.message : 'Could not generate QR code.';
     svgButton.disabled = true;
