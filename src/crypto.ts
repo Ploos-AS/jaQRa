@@ -41,8 +41,14 @@ export function cryptoPayload(kind:CryptoKind,values:Record<string,string>):stri
   }
   case 'ethereum':{
    const recipient=address(v('address'),'Ethereum address',/^0x[0-9a-fA-F]{40}$/);
-   if(v('amount').trim())throw new Error('Ethereum amount requests are not yet supported. Use address-only QR.');
-   return 'ethereum:'+recipient;
+   const value=amount(v('amount'),18);
+   const chain=v('chainId').trim();
+   if(chain&&!/^[1-9]\d{0,14}$/.test(chain))throw new Error('Chain ID must be a positive decimal integer.');
+   const target=recipient+(chain?'@'+chain:'');
+   if(!value)return 'ethereum:'+target;
+   const [whole,fraction='']=value.split('.');
+   const wei=(BigInt(whole)*10n**18n+BigInt(fraction.padEnd(18,'0'))).toString();
+   return 'ethereum:'+target+'?value='+wei;
   }
   case 'lightning':{
    const invoice=v('invoice').trim();
@@ -51,8 +57,15 @@ export function cryptoPayload(kind:CryptoKind,values:Record<string,string>):stri
   }
   case 'solana':{
    const recipient=address(v('address'),'Solana address',/^[1-9A-HJ-NP-Za-km-z]{32,44}$/);
-   if(v('amount').trim())throw new Error('Solana amount requests are not yet supported. Use address-only QR.');
-   return 'solana:'+recipient;
+   const value=amount(v('amount'),9);
+   const label=v('label').trim();
+   const message=v('message').trim();
+   if(label.length>100||message.length>200||/[\r\n]/.test(label+message))throw new Error('Solana label or message is too long or contains newlines.');
+   const params=new URLSearchParams();
+   if(value)params.set('amount',value);
+   if(label)params.set('label',label);
+   if(message)params.set('message',message);
+   return 'solana:'+recipient+(params.size?'?'+params.toString():'');
   }
  }
 }
