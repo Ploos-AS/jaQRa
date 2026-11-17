@@ -379,6 +379,7 @@ librarySave.addEventListener('click',()=>{
  if(!latestPayload){libraryStatus.textContent='Create a valid QR code first.';return;}
  const title=libraryTitle.value.trim();
  if(!title){libraryStatus.textContent='Enter a name before saving.';libraryTitle.focus();return;}
+ if(kind.value==='totp'){libraryStatus.textContent='TOTP secrets cannot be saved to the local library or JSON backups. Generate and use the QR directly.';return;}
  const entry:SavedQR={id:crypto.randomUUID(),title,kind:kind.value as QRKind,values:values(),
   design:design(),moduleStyle:moduleStyle.value as ModuleStyle,createdAt:new Date().toISOString(),favorite:false,
   collection:normalizeCollection(libraryNewCollection.value)||undefined};
