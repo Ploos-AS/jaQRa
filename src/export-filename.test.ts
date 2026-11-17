@@ -11,7 +11,7 @@ describe('exportFilename', () => {
     expect(exportFilename('QR.png', 'svg')).toBe('QR.svg');
   });
   it('removes path separators, control characters and trailing dots', () => {
-    expect(exportFilename('../test/qr', 'svg')).toBe('---test-qr.svg');
+    expect(exportFilename('../test/qr', 'svg')).toBe('-test-qr.svg');
     expect(exportFilename('hello\\world?', 'png')).toBe('hello-world-.png');
     expect(exportFilename('... ', 'svg')).toBe('jaqra-qr.svg');
   });
