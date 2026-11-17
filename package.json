@@ -12,14 +12,14 @@
     "test:build": "node scripts/smoke-build.mjs"
   },
   "dependencies": {
-    "qrcode": "^1.5.4",
+    "fflate": "^0.8.2",
     "jsqr": "^1.4.0",
-    "fflate": "^0.8.2"
+    "qrcode": "^1.5.4"
   },
   "devDependencies": {
     "@types/qrcode": "^1.5.5",
     "typescript": "^5.7.3",
-    "vite": "^6.1.0",
-    "vitest": "^3.0.5"
+    "vite": "^8.3.8",
+    "vitest": "^5.1.0"
   }
 }
