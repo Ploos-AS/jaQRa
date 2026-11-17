@@ -223,9 +223,16 @@ const labelGap=document.querySelector<HTMLInputElement>('#label-gap')!;
 const labelPrint=document.querySelector<HTMLButtonElement>('#label-print')!;
 const labelSheets=document.querySelector<HTMLElement>('#label-sheets')!;
 labelPaper.value=defaultPaper(navigator.language);
+let batchStudioBusy = false;
+function setBatchStudioBusy(busy: boolean): void {
+ batchStudioBusy = busy;
+ batchButton.disabled = busy;
+ labelPrint.disabled = busy;
+}
 labelPrint.addEventListener('click',async()=>{
+ if(batchStudioBusy)return;
  const file=batchFile.files?.[0];if(!file){batchStatus.textContent='Select a CSV file first.';return;}
- labelPrint.disabled=true;
+ setBatchStudioBusy(true);
  const labelDesign=design();
  const labelModuleStyle=moduleStyle.value as ModuleStyle;
  const labelLogo=logoData;
@@ -254,12 +261,13 @@ labelPrint.addEventListener('click',async()=>{
   batchStatus.textContent='Ready to print '+rows.length+' labels. Select '+layout.page.label+' in your browser print dialog.';
   window.print();
  }catch(err){batchStatus.textContent=err instanceof Error?err.message:'Unable to prepare labels.';labelSheets.replaceChildren();}
- finally{labelPrint.disabled=false;}
+ finally{setBatchStudioBusy(false);}
 });
 window.addEventListener('afterprint',()=>{document.body.classList.remove('printing-labels');});
 batchButton.addEventListener('click',async()=>{
+ if(batchStudioBusy)return;
  const file=batchFile.files?.[0];if(!file){batchStatus.textContent='Select a CSV file first.';return;}
- batchButton.disabled=true;
+ setBatchStudioBusy(true);
  const batchDesign=design();
  const batchModuleStyle=moduleStyle.value as ModuleStyle;
  const batchLogo=logoData;
@@ -286,7 +294,7 @@ batchButton.addEventListener('click',async()=>{
   download(new Blob([batchFilesZip(output,format) as BlobPart],{type:'application/zip'}),'jaqra-batch-'+format+'.zip');
   batchStatus.textContent='Created '+output.length+' validated QR codes.';
  }catch(err){batchStatus.textContent=err instanceof Error?err.message:'Batch generation failed.';}
- finally{batchButton.disabled=false;}
+ finally{setBatchStudioBusy(false);}
 });
 const scanFile=document.querySelector<HTMLInputElement>('#scan-file')!;
 const scanButton=document.querySelector<HTMLButtonElement>('#scan-image')!;
