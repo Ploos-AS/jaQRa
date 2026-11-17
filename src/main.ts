@@ -14,13 +14,41 @@ import { overlayLogo, readLogo } from './logo';
 import { frameTemplates, frameCopy, type FrameTemplate } from './frames';
 import { presets, contrastRatio, type QRDesign } from './design';
 import { buildPayload, fields, type QRKind } from './payloads';
+import { categories, filterFormats, formatByKind } from './format-catalog';
 
 const root = document.querySelector<HTMLDivElement>('#app')!;
+function initFormatExplorer():void {
+ const kind=document.querySelector<HTMLSelectElement>('#kind')!;
+ const category=document.querySelector<HTMLSelectElement>('#format-category')!;
+ const search=document.querySelector<HTMLInputElement>('#format-search')!;
+ const info=document.querySelector<HTMLElement>('#format-info')!;
+ const results=document.querySelector<HTMLElement>('#format-results')!;
+ for(const label of categories)category.add(new Option(label,label));
+ const updateInfo=()=>{const format=formatByKind(kind.value as QRKind);info.textContent=format.description+'. '+format.category;};
+ const render=()=>{
+  const selected=kind.value as QRKind;
+  const matches=filterFormats(search.value,category.value as typeof categories[number]);
+  kind.replaceChildren();
+  for(const format of matches)kind.add(new Option(format.label,format.kind));
+  if(matches.some(format=>format.kind===selected))kind.value=selected;
+  else if(matches.length){kind.value=matches[0].kind;kind.dispatchEvent(new Event('change'));}
+  kind.disabled=matches.length===0;
+  results.textContent=matches.length?matches.length+' format'+(matches.length===1?'':'s')+' found.':'No matching formats. Clear search or choose another category.';
+  if(matches.length)updateInfo();else info.textContent='';
+ };
+ search.addEventListener('input',render);
+ category.addEventListener('change',render);
+ kind.addEventListener('change',updateInfo);
+ // Keep programmatic library restores discoverable even if a previous filter excludes their type.
+ kind.addEventListener('format-reveal',()=>{search.value='';category.value='All formats';render();});
+ render();
+}
+
 root.innerHTML = `
   <a class="skip-link" href="#qr-creator">Skip to QR creator</a><header><div class="brand">ja<span>QR</span>a</div><div class="tagline">Every QR. One Place.</div></header>
   <section class="hero"><div class="eyebrow">FREE • PRIVATE • LOCAL-FIRST</div><h1>Make a QR code.<br><em>Make it yours.</em></h1><p>Create high-quality QR codes in your browser. No account. No tracking. No expiration.</p></section>
   <section class="workspace" id="qr-creator" aria-label="QR code creator">
-    <div class="controls"><h2>Create your code</h2><label for="kind">QR code type</label><select id="kind"><option value="url">Website URL</option><option value="text">Plain text</option><option value="wifi">Wi-Fi</option><option value="vcard">Contact (vCard)</option><option value="email">Email</option><option value="sms">SMS</option><option value="phone">Phone</option><option value="geo">Location</option><optgroup label="Cryptocurrency"><option value="bitcoin">Bitcoin (BTC)</option><option value="monero">Monero (XMR)</option><option value="ethereum">Ethereum (ETH)</option><option value="lightning">Bitcoin Lightning (BOLT11)</option><option value="solana">Solana (SOL)</option></optgroup></select><div id="fields"></div>
+    <div class="controls"><h2>Create your code</h2><label for="format-search">Find a QR format</label><input id="format-search" type="search" placeholder="Search: Monero, Wi-Fi, payment…" autocomplete="off"><label for="format-category">Category</label><select id="format-category"></select><label for="kind">QR code type</label><select id="kind"></select><p class="hint" id="format-info" aria-live="polite"></p><p class="hint" id="format-results" role="status"></p><div id="fields"></div>
     <h3>Design Studio</h3><label for="preset">Color preset</label><select id="preset"><option>Classic</option><option>Midnight</option><option>Forest</option><option>Ocean</option><option>Ink</option><option value="custom">Custom</option></select><div class="design-colors"><div><label for="color">QR color</label><input id="color" type="color" value="#12243c"></div><div><label for="background">Background</label><input id="background" type="color" value="#ffffff"></div></div><label for="module-style">Module style</label><select id="module-style"><option value="square">Classic squares</option><option value="rounded">Soft rounded</option><option value="dots">Dots</option></select><label for="margin">Quiet zone (modules)</label><input id="margin" type="number" min="4" max="12" step="1" value="4"><p class="hint" id="contrast" aria-live="polite"></p>
     <h3>Logo Studio</h3><label for="logo-file">Logo (PNG, JPEG or WebP, max 1 MB)</label><input id="logo-file" type="file" accept="image/png,image/jpeg,image/webp"><label for="logo-size">Logo size (8–18%)</label><input id="logo-size" type="range" min="8" max="18" value="12"><button type="button" id="clear-logo">Remove logo</button><p class="hint">Logo is processed locally. Export is enabled only if the QR can be decoded.</p><h3>Print & Frames</h3><label for="frame-template">Frame template</label><select id="frame-template"><option value="simple">Scan me</option><option value="wifi">Wi-Fi sign</option><option value="menu">Restaurant menu</option><option value="event">Event</option><option value="contact">Contact card</option></select><label for="frame-title">Headline</label><input id="frame-title" maxlength="70"><label for="frame-subtitle">Description</label><input id="frame-subtitle" maxlength="120"><p class="hint">Print on A4 or save as PDF using your browser. Only validated codes can be printed.</p><p class="hint">Your content stays in this browser. Static QR codes do not expire.</p><p class="error" id="error" role="alert" aria-live="polite"></p></div>
     <div class="result"><div class="preview" id="preview" role="img" aria-label="QR code preview: enter content to generate a QR code"><span>Enter a URL or text to preview your QR code.</span></div>
@@ -317,7 +345,9 @@ function renderLibrary(){
   const meta=document.createElement('span');meta.textContent=item.kind+' · '+new Date(item.createdAt).toLocaleDateString();
   const load=document.createElement('button');load.type='button';load.textContent='Load';
   load.addEventListener('click',()=>{
-   kind.value=item.kind;makeFields();
+   kind.dispatchEvent(new Event('format-reveal'));
+   kind.value=item.kind;
+   kind.dispatchEvent(new Event('change'));
    inputs.querySelectorAll<HTMLInputElement|HTMLTextAreaElement|HTMLSelectElement>('[data-field]').forEach(el=>{
     const value=item.values[el.dataset.field!]??'';
     if(el instanceof HTMLInputElement&&el.type==='checkbox')el.checked=value==='true';
@@ -403,6 +433,7 @@ libraryImport.addEventListener('click',async()=>{
  finally{libraryImport.disabled=false;}
 });
 renderLibrary();
+initFormatExplorer();
 makeFields();
 frameTemplate.dispatchEvent(new Event('change'));
 if ('serviceWorker' in navigator) window.addEventListener('load', () => { navigator.serviceWorker.register('/sw.js').catch(() => {}); });
