@@ -4,18 +4,33 @@ import { validatePayload } from './qr';
 export interface BatchRow { name: string; payload: string }
 export function parseCSV(source: string): BatchRow[] {
  if(source.length > 1024*1024) throw new Error('CSV exceeds 1 MB.');
- const rows:string[][]=[];let row:string[]=[],field='',quoted=false;
- const text=source.replace(/^\uFEFF/,'');
+ const rows:string[][]=[];
+ let row:string[]=[],field='',state:'start'|'unquoted'|'quoted'|'closed'='start';
+ const text=source.replace(/^\\uFEFF/,'');
+ const pushField=()=>{row.push(field);field='';state='start';};
+ const pushRow=()=>{pushField();if(row.some(v=>v.trim()))rows.push(row);row=[];};
  for(let i=0;i<text.length;i++){
   const c=text[i];
-  if(quoted){if(c==='"'&&text[i+1]==='"'){field+='"';i++;}else if(c==='"')quoted=false;else field+=c;}
-  else if(c==='"'){if(field)throw new Error('Malformed CSV quoting.');quoted=true;}
-  else if(c===','){row.push(field);field='';}
-  else if(c==='\n'||c==='\r'){if(c==='\r'&&text[i+1]==='\n')i++;row.push(field);field='';if(row.some(v=>v.trim()))rows.push(row);row=[];}
-  else field+=c;
+  if(state==='quoted'){
+   if(c==='"'&&text[i+1]==='"'){field+='"';i++;}
+   else if(c==='"')state='closed';
+   else field+=c;
+   continue;
+  }
+  if(c===','){pushField();continue;}
+  if(c==='\\n'||c==='\\r'){
+   if(c==='\\r'&&text[i+1]==='\\n')i++;
+   pushRow();continue;
+  }
+  if(state==='closed')throw new Error('Unexpected text after closing CSV quote.');
+  if(c==='"'){
+   if(state!=='start')throw new Error('Malformed CSV quoting.');
+   state='quoted';continue;
+  }
+  field+=c;state='unquoted';
  }
- if(quoted)throw new Error('Unclosed CSV quote.');
- row.push(field);if(row.some(v=>v.trim()))rows.push(row);
+ if(state==='quoted')throw new Error('Unclosed CSV quote.');
+ pushRow();
  if(!rows.length)throw new Error('CSV is empty.');
  const header=rows.shift()!.map(x=>x.trim().toLowerCase());
  const nameCol=header.indexOf('name'),valueCol=header.indexOf('payload');
