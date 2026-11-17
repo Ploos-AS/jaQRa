@@ -1,5 +1,5 @@
 import type {QRKind} from './payloads';
-export const categories=['All formats','Web & text','Connectivity','Contact & communication','Location','Cryptocurrency','Events','Payments'] as const;
+export const categories=['All formats','Web & text','Connectivity','Contact & communication','Location','Cryptocurrency','Events','Payments','Security','Products'] as const;
 export type FormatCategory=typeof categories[number];
 export interface QRFormat {kind:QRKind;label:string;category:Exclude<FormatCategory,'All formats'>;description:string;keywords:string}
 export const qrFormats:QRFormat[]=[
@@ -21,6 +21,8 @@ export const qrFormats:QRFormat[]=[
  {kind:'bitcoincash',label:'Bitcoin Cash (BCH)',category:'Cryptocurrency',description:'CashAddr receiving address and optional BCH amount',keywords:'crypto cashaddr payment'},
  {kind:'mecard',label:'Contact (MeCard)',category:'Contact & communication',description:'Compact contact card format',keywords:'person business card'},
  {kind:'calendar',label:'Calendar event (iCalendar)',category:'Events',description:'Calendar event with UTC start and end',keywords:'ics appointment meeting'},
+ {kind:'totp',label:'Authenticator (TOTP / 2FA)',category:'Security',description:'Provision an authenticator with an existing secret; treat QR as highly sensitive',keywords:'otpauth two factor authentication 2fa'},
+ {kind:'gs1',label:'GS1 Digital Link',category:'Products',description:'GTIN product link with optional lot or serial',keywords:'barcode gtin retail supply chain'},
  {kind:'sepa',label:'SEPA payment (EPC)',category:'Payments',description:'European EUR bank transfer QR',keywords:'bank iban sct epc euro'}
 ];
 export function filterFormats(query:string,category:FormatCategory='All formats'):QRFormat[]{
