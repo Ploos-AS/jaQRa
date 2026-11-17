@@ -240,7 +240,7 @@ async function refreshCameras(){
   const cameras=await listCameras();
   cameraChoice.replaceChildren(new Option('Default (rear camera preferred)',''));
   for(const camera of cameras)cameraChoice.add(new Option(camera.label,camera.deviceId));
-  if([...cameraChoice.options].some(option=>option.value===previous))cameraChoice.value=previous;
+  if(Array.from(cameraChoice.options).some(option=>option.value===previous))cameraChoice.value=previous;
  }catch{ /* Camera enumeration may be unavailable before permission is granted. */ }
 }
 function scanCameraFrame(epoch:number){
