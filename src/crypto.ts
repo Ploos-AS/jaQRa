@@ -43,7 +43,7 @@ export function cryptoPayload(kind:CryptoKind,values:Record<string,string>):stri
    const recipient=address(v('address'),'Ethereum address',/^0x[0-9a-fA-F]{40}$/);
    const value=amount(v('amount'),18);
    const chain=v('chainId').trim();
-   if(chain&&!/^[1-9]\\d{0,14}$/.test(chain))throw new Error('Chain ID must be a positive decimal integer.');
+   if(chain&&!/^[1-9]\d{0,14}$/.test(chain))throw new Error('Chain ID must be a positive decimal integer.');
    const target=recipient+(chain?'@'+chain:'');
    if(!value)return 'ethereum:'+target;
    const [whole,fraction='']=value.split('.');
@@ -60,7 +60,7 @@ export function cryptoPayload(kind:CryptoKind,values:Record<string,string>):stri
    const value=amount(v('amount'),9);
    const label=v('label').trim();
    const message=v('message').trim();
-   if(label.length>100||message.length>200||/[\\r\\n]/.test(label+message))throw new Error('Solana label or message is too long or contains newlines.');
+   if(label.length>100||message.length>200||/[\r\n]/.test(label+message))throw new Error('Solana label or message is too long or contains newlines.');
    const params=new URLSearchParams();
    if(value)params.set('amount',value);
    if(label)params.set('label',label);
