@@ -15,7 +15,7 @@ describe('Logo Studio',()=>{
   expect(()=>validateLogoFile(new File(['<svg/>'],'logo.svg',{type:'image/svg+xml'}))).toThrow();
  });
  it('accepts trailing whitespace in QR SVG',()=>{
-  const result=overlayLogo(svg+'\\n  ',{dataURL:image,sizePercent:12});
+  const result=overlayLogo(svg+'\n  ',{dataURL:image,sizePercent:12});
   expect(result).toContain('<image');
   expect(result.endsWith('</svg>')).toBe(true);
  });
