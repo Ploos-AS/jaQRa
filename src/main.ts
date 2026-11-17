@@ -52,7 +52,7 @@ root.innerHTML = `
     <h3>Design Studio</h3><label for="preset">Color preset</label><select id="preset"><option>Classic</option><option>Midnight</option><option>Forest</option><option>Ocean</option><option>Ink</option><option value="custom">Custom</option></select><div class="design-colors"><div><label for="color">QR color</label><input id="color" type="color" value="#12243c"></div><div><label for="background">Background</label><input id="background" type="color" value="#ffffff"></div></div><label for="module-style">Module style</label><select id="module-style"><option value="square">Classic squares</option><option value="rounded">Soft rounded</option><option value="dots">Dots</option></select><label for="margin">Quiet zone (modules)</label><input id="margin" type="number" min="4" max="12" step="1" value="4"><p class="hint" id="contrast" aria-live="polite"></p>
     <h3>Logo Studio</h3><label for="logo-file">Logo (PNG, JPEG or WebP, max 1 MB)</label><input id="logo-file" type="file" accept="image/png,image/jpeg,image/webp"><label for="logo-size">Logo size (8–18%)</label><input id="logo-size" type="range" min="8" max="18" value="12"><button type="button" id="clear-logo">Remove logo</button><p class="hint">Logo is processed locally. Export is enabled only if the QR can be decoded.</p><h3>Print & Frames</h3><label for="frame-template">Frame template</label><select id="frame-template"><option value="simple">Scan me</option><option value="wifi">Wi-Fi sign</option><option value="menu">Restaurant menu</option><option value="event">Event</option><option value="contact">Contact card</option></select><label for="frame-title">Headline</label><input id="frame-title" maxlength="70"><label for="frame-subtitle">Description</label><input id="frame-subtitle" maxlength="120"><p class="hint">Print on A4 or save as PDF using your browser. Only validated codes can be printed.</p><p class="hint">Your content stays in this browser. Static QR codes do not expire.</p><p class="error" id="error" role="alert" aria-live="polite"></p></div>
     <div class="result"><div class="preview" id="preview" role="img" aria-label="QR code preview: enter content to generate a QR code"><span>Enter a URL or text to preview your QR code.</span></div>
-    <p class="hint" id="scan-status" role="status" aria-live="polite"></p><div class="actions"><button id="svg" disabled>Download SVG</button><button id="png" disabled>Download PNG</button><button id="print" disabled>Print A4 / Save PDF</button></div><p class="hint" id="export-status" role="status" aria-live="polite"></p></div>
+    <p class="hint" id="scan-status" role="status" aria-live="polite"></p><div class="actions"><button id="copy-payload" type="button" disabled>Copy QR content</button><button id="svg" disabled>Download SVG</button><button id="png" disabled>Download PNG</button><button id="print" disabled>Print A4 / Save PDF</button></div><p class="hint" id="export-status" role="status" aria-live="polite"></p></div>
   </section>
   <section class="batch-panel" aria-labelledby="batch-heading"><h2 id="batch-heading">Batch Studio</h2><p>Import a CSV file with <code>name,payload</code> columns (name optional). Up to 100 QR codes.</p><label for="batch-file">CSV file</label><input id="batch-file" type="file" accept=".csv,text/csv"><label for="batch-format">ZIP format</label><select id="batch-format"><option value="svg">SVG</option><option value="png">PNG</option></select><button id="batch-export" type="button">Generate ZIP</button><h3>Print labels</h3><label for="label-paper">Paper size</label><select id="label-paper"><option value="a4">A4</option><option value="letter">US Letter</option><option value="a5">A5</option><option value="legal">US Legal</option></select><label for="label-count">Labels per sheet</label><select id="label-count"><option>1</option><option>2</option><option selected>4</option><option>6</option><option>8</option><option>10</option></select><label for="label-margin">Page margins (mm)</label><input id="label-margin" type="number" min="5" max="25" value="12"><label for="label-gap">Label gap (mm)</label><input id="label-gap" type="number" min="0" max="15" value="4"><button id="label-print" type="button">Print labels / Save PDF</button><p id="batch-status" role="status" aria-live="polite"></p></section>
   <section class="library-panel" aria-labelledby="library-heading"><h2 id="library-heading">My QR Library</h2><p>Save QR designs on this device only. Nothing is saved automatically. Avoid saving passwords or other secrets on shared devices.</p><label for="library-title">Name for this QR code</label><input id="library-title" type="text" maxlength="80" placeholder="e.g. My website"><label for="library-new-collection">Collection (optional)</label><input id="library-new-collection" type="text" maxlength="40" placeholder="e.g. Business, Personal, Events"><button id="library-save" type="button" disabled>Save current QR</button><label for="library-filter">Show</label><select id="library-filter"><option value="all">All saved</option><option value="favorites">Favorites only</option></select><label for="library-search">Search saved codes</label><input id="library-search" type="search" placeholder="Search by name or QR type" autocomplete="off"><label for="library-collection-filter">Collection</label><select id="library-collection-filter"><option value="">All collections</option></select><button id="library-delete-collection" type="button" disabled>Delete selected collection</button><label for="library-sort">Sort by</label><select id="library-sort"><option value="newest">Newest first</option><option value="oldest">Oldest first</option><option value="name-asc">Name A–Z</option><option value="name-desc">Name Z–A</option><option value="type">QR type</option></select><p id="library-count" role="status" aria-live="polite"></p><div id="library-list"></div><h3>Backup &amp; Restore</h3><p>Export a JSON backup to move your saved QR codes between devices. Backups may contain passwords or personal information: store them securely.</p><button id="library-export" type="button">Export JSON backup</button><label for="library-import-file">Import jaQRa backup (.json, max 1 MB)</label><input id="library-import-file" type="file" accept=".json,application/json"><label for="library-import-mode">Import behavior</label><select id="library-import-mode"><option value="merge">Merge with existing library</option><option value="replace">Replace entire library</option></select><button id="library-import" type="button">Import backup</button><hr><button id="library-clear" type="button">Delete all saved codes</button><p id="library-status" role="status" aria-live="polite"></p><p class="hint">Stored in this browser only. Clearing site data also removes your saved codes. Logos are not stored in this version.</p></section>
@@ -76,6 +76,7 @@ const logoSize = document.querySelector<HTMLInputElement>('#logo-size')!;
 const clearLogo = document.querySelector<HTMLButtonElement>('#clear-logo')!;
 let logoData = '';
 const exportStatus = document.querySelector<HTMLParagraphElement>('#export-status')!;
+const copyPayloadButton = document.querySelector<HTMLButtonElement>('#copy-payload')!;
 const svgButton = document.querySelector<HTMLButtonElement>('#svg')!;
 const pngButton = document.querySelector<HTMLButtonElement>('#png')!;
 const printButton = document.querySelector<HTMLButtonElement>('#print')!;
@@ -96,6 +97,8 @@ function invalidateQR() {
   latestSVG = '';
   latestPayload = '';
   librarySave.disabled = true;
+  copyPayloadButton.disabled = true;
+  exportStatus.textContent = '';
   svgButton.disabled = true;
   pngButton.disabled = true;
   printButton.disabled = true;
@@ -117,7 +120,7 @@ async function update() {
     if (!validationState.isCurrent(current)) return;
     scanStatus.textContent = check.message;
     error.textContent = '';
-    if (check.valid && validationState.accept(current,svg,text)) { preview.setAttribute('aria-label','Verified QR code preview for '+kind.options[kind.selectedIndex].text); latestSVG = svg; latestPayload = text; librarySave.disabled = false; svgButton.disabled = false; pngButton.disabled = false; printButton.disabled = false; updateFrame(); } else {preview.setAttribute('aria-label','QR code preview failed scannability check');printCode.replaceChildren();}
+    if (check.valid && validationState.accept(current,svg,text)) { preview.setAttribute('aria-label','Verified QR code preview for '+kind.options[kind.selectedIndex].text); latestSVG = svg; latestPayload = text; librarySave.disabled = false; copyPayloadButton.disabled = false; svgButton.disabled = false; pngButton.disabled = false; printButton.disabled = false; updateFrame(); } else {preview.setAttribute('aria-label','QR code preview failed scannability check');printCode.replaceChildren();}
   } catch (err) {
     if (!validationState.isCurrent(current)) return;
     scanStatus.textContent = '';
@@ -144,6 +147,22 @@ logoSize.addEventListener('input', update);
 logoFile.addEventListener('change', async () => {const file=logoFile.files?.[0];if(!file)return;try{logoData=await readLogo(file);void update();}catch(err){logoData='';logoFile.value='';error.textContent=err instanceof Error?err.message:'Invalid logo.';void update();}});
 clearLogo.addEventListener('click',()=>{logoData='';logoFile.value='';void update();});
 preset.addEventListener('change', () => {const p=presets[preset.value];if(p){color.value=p.foreground;background.value=p.background;margin.value=String(p.margin);}void update();});
+copyPayloadButton.addEventListener('click', async () => {
+  if (copyPayloadButton.disabled || !latestPayload) return;
+  const payload = latestPayload;
+  const token = validationState.token;
+  try {
+    if (!navigator.clipboard?.writeText) throw new Error('Clipboard API unavailable');
+    await navigator.clipboard.writeText(payload);
+    if (validationState.isCurrent(token) && payload === latestPayload) {
+      exportStatus.textContent = 'QR content copied to clipboard.';
+    }
+  } catch {
+    if (validationState.isCurrent(token) && payload === latestPayload) {
+      exportStatus.textContent = 'Could not copy QR content. Clipboard access may be blocked.';
+    }
+  }
+});
 svgButton.addEventListener('click', () => {
   if (!latestSVG) return;
   download(new Blob([latestSVG], { type: 'image/svg+xml' }), 'jaqra-qr.svg');
