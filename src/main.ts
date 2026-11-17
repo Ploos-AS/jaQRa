@@ -3,6 +3,7 @@ import { renderSVG } from './qr';
 import { styledSVG, styledPNG, type ModuleStyle } from './styling';
 import { verifySVG } from './verify';
 import { scanImage, safeWebURL } from './scanner';
+import { listCameras, openCamera, stopCamera, decodeVideoFrame } from './camera';
 import { parseCSV, batchFilesZip, type BatchFormat } from './batch';
 import { defaultPaper, labelLayout, type PaperSize, type LabelCount } from './labels';
 import { overlayLogo, readLogo } from './logo';
@@ -22,7 +23,7 @@ root.innerHTML = `
     <p class="hint" id="scan-status" role="status" aria-live="polite"></p><div class="actions"><button id="svg" disabled>Download SVG</button><button id="png" disabled>Download PNG</button><button id="print" disabled>Print A4 / Save PDF</button></div></div>
   </section>
   <section class="batch-panel"><h2>Batch Studio</h2><p>Import a CSV file with <code>name,payload</code> columns (name optional). Up to 100 QR codes.</p><label for="batch-file">CSV file</label><input id="batch-file" type="file" accept=".csv,text/csv"><label for="batch-format">ZIP format</label><select id="batch-format"><option value="svg">SVG</option><option value="png">PNG</option></select><button id="batch-export" type="button">Generate ZIP</button><h3>Print labels</h3><label for="label-paper">Paper size</label><select id="label-paper"><option value="a4">A4</option><option value="letter">US Letter</option><option value="a5">A5</option><option value="legal">US Legal</option></select><label for="label-count">Labels per sheet</label><select id="label-count"><option>1</option><option>2</option><option selected>4</option><option>6</option><option>8</option><option>10</option></select><label for="label-margin">Page margins (mm)</label><input id="label-margin" type="number" min="5" max="25" value="12"><label for="label-gap">Label gap (mm)</label><input id="label-gap" type="number" min="0" max="15" value="4"><button id="label-print" type="button">Print labels / Save PDF</button><p id="batch-status" role="status" aria-live="polite"></p></section>
-  <section class="scanner-panel" aria-label="QR Scanner Studio"><h2>QR Scanner Studio</h2><p>Decode an existing QR code from a PNG, JPEG or WebP image. Scanning happens in your browser; your image is not uploaded.</p><label for="scan-file">QR image (max 10 MB)</label><input id="scan-file" type="file" accept="image/png,image/jpeg,image/webp"><button id="scan-image" type="button">Scan image</button><p id="scanner-status" role="status" aria-live="polite"></p><label for="scan-result">Decoded content</label><textarea id="scan-result" rows="4" readonly placeholder="Decoded QR content appears here"></textarea><button id="scan-copy" type="button" disabled>Copy decoded content</button><a id="scan-link" target="_blank" rel="noopener noreferrer" hidden>Open website (external)</a><p class="hint">Links are never opened automatically. Check the address before visiting.</p></section>
+  <section class="scanner-panel" aria-label="QR Scanner Studio"><h2>QR Scanner Studio</h2><p>Decode an existing QR code from a PNG, JPEG or WebP image. Scanning happens in your browser; your image is not uploaded.</p><label for="scan-file">QR image (max 10 MB)</label><input id="scan-file" type="file" accept="image/png,image/jpeg,image/webp"><button id="scan-image" type="button">Scan image</button><h3>Scan with camera</h3><p>Camera access starts only when you press Start camera. Video stays on this device.</p><label for="camera-choice">Camera</label><select id="camera-choice"><option value="">Default (rear camera preferred)</option></select><button id="camera-start" type="button">Start camera</button><button id="camera-stop" type="button" disabled>Stop camera</button><video id="camera-preview" autoplay muted playsinline hidden aria-label="Live camera QR scanner"></video><p id="scanner-status" role="status" aria-live="polite"></p><label for="scan-result">Decoded content</label><textarea id="scan-result" rows="4" readonly placeholder="Decoded QR content appears here"></textarea><button id="scan-copy" type="button" disabled>Copy decoded content</button><a id="scan-link" target="_blank" rel="noopener noreferrer" hidden>Open website (external)</a><p class="hint">Links are never opened automatically. Check the address before visiting.</p></section>
   <section id="label-sheets" aria-label="Printable batch labels"></section><section id="print-sheet" aria-label="Printable QR sign"><h1 id="print-title"></h1><div id="print-code"></div><p id="print-subtitle"></p></section><footer>Made by Ploos AS · Privacy-first QR generation</footer>
 `;
 const kind = document.querySelector<HTMLSelectElement>('#kind')!;
@@ -204,10 +205,7 @@ scanButton.addEventListener('click',async()=>{
   scannerStatus.textContent='Scanning locally…';
   const decoded=await scanImage(file);
   if(decoded===null){scannerStatus.textContent='No readable QR code found. Try a sharper image with better lighting.';return;}
-  scanResult.value=decoded;scanCopy.disabled=false;
-  const url=safeWebURL(decoded);
-  if(url){scanLink.href=url;scanLink.hidden=false;}
-  scannerStatus.textContent='QR code decoded. Review the content before using it.';
+  displayScan(decoded);
  }catch(err){scannerStatus.textContent=err instanceof Error?err.message:'Unable to scan image.';}
  finally{scanButton.disabled=false;}
 });
@@ -215,6 +213,67 @@ scanCopy.addEventListener('click',async()=>{
  try{await navigator.clipboard.writeText(scanResult.value);scannerStatus.textContent='Copied to clipboard.';}
  catch{scannerStatus.textContent='Clipboard unavailable. Select and copy the decoded content manually.';}
 });
+const cameraChoice=document.querySelector<HTMLSelectElement>('#camera-choice')!;
+const cameraStart=document.querySelector<HTMLButtonElement>('#camera-start')!;
+const cameraStop=document.querySelector<HTMLButtonElement>('#camera-stop')!;
+const cameraPreview=document.querySelector<HTMLVideoElement>('#camera-preview')!;
+const cameraCanvas=document.createElement('canvas');
+let cameraStream:MediaStream|null=null;
+let cameraTimer:number|undefined;
+let cameraStarting=false;
+let cameraEpoch=0;
+function clearCamera(){
+ cameraEpoch++;
+ if(cameraTimer!==undefined){window.clearTimeout(cameraTimer);cameraTimer=undefined;}
+ stopCamera(cameraStream);cameraStream=null;
+ cameraPreview.pause();cameraPreview.srcObject=null;cameraPreview.hidden=true;
+ cameraStart.disabled=false;cameraStop.disabled=true;
+}
+function displayScan(decoded:string){
+ scanResult.value=decoded;scanCopy.disabled=false;scanLink.hidden=true;scanLink.removeAttribute('href');
+ const url=safeWebURL(decoded);if(url){scanLink.href=url;scanLink.hidden=false;}
+ scannerStatus.textContent='QR code decoded. Review the content before using it.';
+}
+async function refreshCameras(){
+ try{
+  const previous=cameraChoice.value;
+  const cameras=await listCameras();
+  cameraChoice.replaceChildren(new Option('Default (rear camera preferred)',''));
+  for(const camera of cameras)cameraChoice.add(new Option(camera.label,camera.deviceId));
+  if([...cameraChoice.options].some(option=>option.value===previous))cameraChoice.value=previous;
+ }catch{ /* Camera enumeration may be unavailable before permission is granted. */ }
+}
+function scanCameraFrame(epoch:number){
+ if(epoch!==cameraEpoch||!cameraStream)return;
+ try{
+  const decoded=decodeVideoFrame(cameraPreview,cameraCanvas);
+  if(decoded!==null){displayScan(decoded);clearCamera();return;}
+ }catch(err){scannerStatus.textContent=err instanceof Error?err.message:'Camera scanning failed.';clearCamera();return;}
+ cameraTimer=window.setTimeout(()=>scanCameraFrame(epoch),250);
+}
+cameraStart.addEventListener('click',async()=>{
+ if(cameraStarting||cameraStream)return;
+ cameraStarting=true;cameraStart.disabled=true;cameraStop.disabled=false;
+ const epoch=++cameraEpoch;
+ try{
+  scannerStatus.textContent='Requesting camera access…';
+  const stream=await openCamera(cameraChoice.value||undefined);
+  if(epoch!==cameraEpoch){stopCamera(stream);return;}
+  cameraStream=stream;
+  cameraPreview.srcObject=stream;cameraPreview.hidden=false;
+  await cameraPreview.play();
+  if(epoch!==cameraEpoch)return;
+  await refreshCameras();
+  scannerStatus.textContent='Camera active. Point it at a QR code.';
+  scanCameraFrame(epoch);
+ }catch(err){
+  if(epoch===cameraEpoch){clearCamera();scannerStatus.textContent=err instanceof Error?'Unable to start camera: '+err.message:'Unable to start camera.';}
+ }finally{cameraStarting=false;if(!cameraStream)cameraStart.disabled=false;}
+});
+cameraStop.addEventListener('click',()=>{clearCamera();scannerStatus.textContent='Camera stopped.';});
+window.addEventListener('pagehide',clearCamera);
+document.addEventListener('visibilitychange',()=>{if(document.hidden&&cameraStream){clearCamera();scannerStatus.textContent='Camera stopped when the page was hidden.';}});
+void refreshCameras();
 makeFields();
 frameTemplate.dispatchEvent(new Event('change'));
 if ('serviceWorker' in navigator) window.addEventListener('load', () => { navigator.serviceWorker.register('/sw.js').catch(() => {}); });
