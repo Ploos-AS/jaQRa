@@ -13,4 +13,8 @@ The audit workflow is **report-only** to allow a baseline of existing advisories
 5. Run `npm ci`, `npm test`, `npm run build`, and rerun `npm audit`.
 6. Confirm that any remaining findings are documented and justified before beta.
 
-The user's local installation reported **two critical and one moderate** vulnerability on 2026-11-17. This count is a snapshot, not a verified list of affected packages; the workflow report is needed to identify them.
+## 2026-11-17 remediation snapshot
+
+The initial GitHub Actions audit reported 7 affected packages: 2 critical, 4 high, and 1 moderate. After upgrading direct development dependencies to Vite 8.3.8 and Vitest 5.1.0, local tests (131 Vitest tests plus 3 precache tests) and production build passed. Local `npm audit` then reported **5 high, 0 critical, 0 moderate** findings. These remaining alerts trace through development-tool dependencies to `picomatch@4.0.7`, specifically advisory `GHSA-fc5q-39xc-vjpf` (glob-pattern ReDoS). At the time of the check, `picomatch@4.0.7` was the latest version reported by npm.
+
+**Risk and limitation:** These dependencies are declared as development dependencies, not directly shipped browser runtime packages. They still execute in local and CI build environments; untrusted glob patterns may be a risk. This is **not** a declaration that the vulnerability is harmless or accepted for public beta. Avoid running the build pipeline on untrusted inputs, monitor the advisory, and reassess before beta release. Do not downgrade or force-install incompatible packages solely to silence npm audit. Re-run the audit in CI after merging and record any changes.
