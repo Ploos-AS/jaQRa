@@ -1,4 +1,4 @@
-export type CryptoKind='bitcoin'|'monero'|'ethereum'|'lightning'|'solana';
+export type CryptoKind='bitcoin'|'monero'|'ethereum'|'lightning'|'solana'|'litecoin'|'dogecoin'|'bitcoincash';
 const amount=(raw:string,decimals:number):string=>{
  const value=raw.trim();
  if(!value)return '';
@@ -17,6 +17,22 @@ export function cryptoPayload(kind:CryptoKind,values:Record<string,string>):stri
    const recipient=address(v('address'),'Bitcoin address',/^(?:[13][a-km-zA-HJ-NP-Z1-9]{25,34}|(?:bc1|BC1)[ac-hj-np-z02-9AC-HJ-NP-Z]{11,87})$/);
    const value=amount(v('amount'),8);
    return 'bitcoin:'+recipient+(value?'?amount='+value:'');
+  }
+  case 'litecoin':{
+   const recipient=address(v('address'),'Litecoin address',/^(?:[LM3][a-km-zA-HJ-NP-Z1-9]{25,34}|(?:ltc1|LTC1)[ac-hj-np-z02-9AC-HJ-NP-Z]{11,87})$/);
+   const value=amount(v('amount'),8);
+   return 'litecoin:'+recipient+(value?'?amount='+value:'');
+  }
+  case 'dogecoin':{
+   const recipient=address(v('address'),'Dogecoin address',/^D[a-km-zA-HJ-NP-Z1-9]{25,34}$/);
+   const value=amount(v('amount'),8);
+   return 'dogecoin:'+recipient+(value?'?amount='+value:'');
+  }
+  case 'bitcoincash':{
+   const recipient=address(v('address'),'Bitcoin Cash CashAddr',/^(?:bitcoincash:)?[qp][ac-hj-np-z02-9]{41,}$/);
+   const normalized=recipient.startsWith('bitcoincash:')?recipient.slice('bitcoincash:'.length):recipient;
+   const value=amount(v('amount'),8);
+   return 'bitcoincash:'+normalized+(value?'?amount='+value:'');
   }
   case 'monero':{
    const recipient=address(v('address'),'Monero address',/^[48][1-9A-HJ-NP-Za-km-z]{94}$/);

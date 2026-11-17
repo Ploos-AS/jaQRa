@@ -16,6 +16,9 @@ export const qrFormats:QRFormat[]=[
  {kind:'ethereum',label:'Ethereum (ETH)',category:'Cryptocurrency',description:'Address-only QR',keywords:'crypto wallet'},
  {kind:'lightning',label:'Bitcoin Lightning (BOLT11)',category:'Cryptocurrency',description:'Existing Lightning invoice',keywords:'crypto btc invoice'},
  {kind:'solana',label:'Solana (SOL)',category:'Cryptocurrency',description:'Address-only QR',keywords:'crypto wallet'},
+ {kind:'litecoin',label:'Litecoin (LTC)',category:'Cryptocurrency',description:'Receiving address and optional LTC amount',keywords:'crypto payment'},
+ {kind:'dogecoin',label:'Dogecoin (DOGE)',category:'Cryptocurrency',description:'Receiving address and optional DOGE amount',keywords:'crypto payment'},
+ {kind:'bitcoincash',label:'Bitcoin Cash (BCH)',category:'Cryptocurrency',description:'CashAddr receiving address and optional BCH amount',keywords:'crypto cashaddr payment'},
  {kind:'mecard',label:'Contact (MeCard)',category:'Contact & communication',description:'Compact contact card format',keywords:'person business card'},
  {kind:'calendar',label:'Calendar event (iCalendar)',category:'Events',description:'Calendar event with UTC start and end',keywords:'ics appointment meeting'},
  {kind:'sepa',label:'SEPA payment (EPC)',category:'Payments',description:'European EUR bank transfer QR',keywords:'bank iban sct epc euro'}

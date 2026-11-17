@@ -1,6 +1,6 @@
 import { mecard, calendarEvent, sepaPayment } from './extended-payloads';
 import { cryptoPayload } from './crypto';
-export type QRKind = 'url' | 'text' | 'wifi' | 'vcard' | 'email' | 'sms' | 'phone' | 'geo' | 'bitcoin' | 'monero' | 'ethereum' | 'lightning' | 'solana' | 'mecard' | 'calendar' | 'sepa';
+export type QRKind = 'url' | 'text' | 'wifi' | 'vcard' | 'email' | 'sms' | 'phone' | 'geo' | 'bitcoin' | 'monero' | 'ethereum' | 'lightning' | 'solana' | 'mecard' | 'calendar' | 'sepa' | 'litecoin' | 'dogecoin' | 'bitcoincash';
 export const fields: Record<QRKind, Array<[string,string,string]>> = {
  url: [['url','Website URL','url']], text: [['text','Text','textarea']],
  wifi: [['ssid','Network name (SSID)','text'],['password','Password','password'],['security','Security: WPA, WEP or nopass','select'],['hidden','Hidden network','checkbox']],
@@ -16,7 +16,10 @@ export const fields: Record<QRKind, Array<[string,string,string]>> = {
  solana: [['address','Solana receiving address','text']],
  mecard: [['name','Full name','text'],['phone','Phone','tel'],['email','Email','email'],['website','Website','url'],['address','Address','text']],
  calendar: [['title','Event title','text'],['start','Start UTC (YYYYMMDDTHHMMSSZ)','text'],['end','End UTC (YYYYMMDDTHHMMSSZ)','text'],['location','Location (optional)','text'],['description','Description (optional)','textarea']],
- sepa: [['name','Beneficiary name','text'],['iban','IBAN','text'],['bic','BIC (optional)','text'],['amount','EUR amount (optional)','text'],['reference','Payment message (optional)','text']]
+ sepa: [['name','Beneficiary name','text'],['iban','IBAN','text'],['bic','BIC (optional)','text'],['amount','EUR amount (optional)','text'],['reference','Payment message (optional)','text']],
+ litecoin: [['address','Litecoin receiving address','text'],['amount','Amount in LTC (optional)','text']],
+ dogecoin: [['address','Dogecoin receiving address','text'],['amount','Amount in DOGE (optional)','text']],
+ bitcoincash: [['address','Bitcoin Cash CashAddr (no legacy addresses)','text'],['amount','Amount in BCH (optional)','text']]
 };
 const required = (value: string, label: string) => { if (!value.trim()) throw new Error(label + ' is required.'); return value.trim(); };
 const wifiEscape = (s: string) => s.replace(/([\\;,:"])/g, '\\$1');
@@ -28,7 +31,7 @@ export function buildPayload(kind: QRKind, values: Record<string,string>): strin
   case 'mecard': return mecard(values);
   case 'calendar': return calendarEvent(values);
   case 'sepa': return sepaPayment(values);
-  case 'bitcoin': case 'monero': case 'ethereum': case 'lightning': case 'solana': return cryptoPayload(kind,values);
+  case 'bitcoin': case 'monero': case 'ethereum': case 'lightning': case 'solana': case 'litecoin': case 'dogecoin': case 'bitcoincash': return cryptoPayload(kind,values);
   case 'url': { const url = required(v('url'),'Website URL'); const parsed = new URL(url); if (!['http:','https:'].includes(parsed.protocol)) throw new Error('Use an HTTP or HTTPS URL.'); return url; }
   case 'text': return required(v('text'),'Text');
   case 'wifi': { const security = v('security') || 'WPA'; if (!['WPA','WEP','nopass'].includes(security)) throw new Error('Invalid Wi-Fi security type.'); return `WIFI:T:${security};S:${wifiEscape(required(v('ssid'),'Network name'))};P:${security === 'nopass' ? '' : wifiEscape(v('password'))};H:${v('hidden') === 'true' ? 'true' : 'false'};;`; }
