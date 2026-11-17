@@ -1,3 +1,4 @@
+import { exportFilename } from './export-filename';
 import './style.css';
 import { QRValidationState } from './validation-state';
 import { renderSVG } from './qr';
