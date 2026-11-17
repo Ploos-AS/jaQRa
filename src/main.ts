@@ -2,6 +2,7 @@ import './style.css';
 import { renderSVG } from './qr';
 import { styledSVG, styledPNG, type ModuleStyle } from './styling';
 import { verifySVG } from './verify';
+import { scanImage, safeWebURL } from './scanner';
 import { parseCSV, batchFilesZip, type BatchFormat } from './batch';
 import { defaultPaper, labelLayout, type PaperSize, type LabelCount } from './labels';
 import { overlayLogo, readLogo } from './logo';
@@ -21,6 +22,7 @@ root.innerHTML = `
     <p class="hint" id="scan-status" role="status" aria-live="polite"></p><div class="actions"><button id="svg" disabled>Download SVG</button><button id="png" disabled>Download PNG</button><button id="print" disabled>Print A4 / Save PDF</button></div></div>
   </section>
   <section class="batch-panel"><h2>Batch Studio</h2><p>Import a CSV file with <code>name,payload</code> columns (name optional). Up to 100 QR codes.</p><label for="batch-file">CSV file</label><input id="batch-file" type="file" accept=".csv,text/csv"><label for="batch-format">ZIP format</label><select id="batch-format"><option value="svg">SVG</option><option value="png">PNG</option></select><button id="batch-export" type="button">Generate ZIP</button><h3>Print labels</h3><label for="label-paper">Paper size</label><select id="label-paper"><option value="a4">A4</option><option value="letter">US Letter</option><option value="a5">A5</option><option value="legal">US Legal</option></select><label for="label-count">Labels per sheet</label><select id="label-count"><option>1</option><option>2</option><option selected>4</option><option>6</option><option>8</option><option>10</option></select><label for="label-margin">Page margins (mm)</label><input id="label-margin" type="number" min="5" max="25" value="12"><label for="label-gap">Label gap (mm)</label><input id="label-gap" type="number" min="0" max="15" value="4"><button id="label-print" type="button">Print labels / Save PDF</button><p id="batch-status" role="status" aria-live="polite"></p></section>
+  <section class="scanner-panel" aria-label="QR Scanner Studio"><h2>QR Scanner Studio</h2><p>Decode an existing QR code from a PNG, JPEG or WebP image. Scanning happens in your browser; your image is not uploaded.</p><label for="scan-file">QR image (max 10 MB)</label><input id="scan-file" type="file" accept="image/png,image/jpeg,image/webp"><button id="scan-image" type="button">Scan image</button><p id="scanner-status" role="status" aria-live="polite"></p><label for="scan-result">Decoded content</label><textarea id="scan-result" rows="4" readonly placeholder="Decoded QR content appears here"></textarea><button id="scan-copy" type="button" disabled>Copy decoded content</button><a id="scan-link" target="_blank" rel="noopener noreferrer" hidden>Open website (external)</a><p class="hint">Links are never opened automatically. Check the address before visiting.</p></section>
   <section id="label-sheets" aria-label="Printable batch labels"></section><section id="print-sheet" aria-label="Printable QR sign"><h1 id="print-title"></h1><div id="print-code"></div><p id="print-subtitle"></p></section><footer>Made by Ploos AS · Privacy-first QR generation</footer>
 `;
 const kind = document.querySelector<HTMLSelectElement>('#kind')!;
@@ -185,6 +187,33 @@ batchButton.addEventListener('click',async()=>{
   batchStatus.textContent='Created '+output.length+' validated QR codes.';
  }catch(err){batchStatus.textContent=err instanceof Error?err.message:'Batch generation failed.';}
  finally{batchButton.disabled=false;}
+});
+const scanFile=document.querySelector<HTMLInputElement>('#scan-file')!;
+const scanButton=document.querySelector<HTMLButtonElement>('#scan-image')!;
+const scannerStatus=document.querySelector<HTMLParagraphElement>('#scanner-status')!;
+const scanResult=document.querySelector<HTMLTextAreaElement>('#scan-result')!;
+const scanCopy=document.querySelector<HTMLButtonElement>('#scan-copy')!;
+const scanLink=document.querySelector<HTMLAnchorElement>('#scan-link')!;
+scanFile.addEventListener('change',()=>{
+ scanResult.value='';scanCopy.disabled=true;scanLink.hidden=true;scanLink.removeAttribute('href');scannerStatus.textContent='';
+});
+scanButton.addEventListener('click',async()=>{
+ const file=scanFile.files?.[0];if(!file){scannerStatus.textContent='Choose an image first.';return;}
+ scanButton.disabled=true;scanResult.value='';scanCopy.disabled=true;scanLink.hidden=true;scanLink.removeAttribute('href');
+ try{
+  scannerStatus.textContent='Scanning locally…';
+  const decoded=await scanImage(file);
+  if(decoded===null){scannerStatus.textContent='No readable QR code found. Try a sharper image with better lighting.';return;}
+  scanResult.value=decoded;scanCopy.disabled=false;
+  const url=safeWebURL(decoded);
+  if(url){scanLink.href=url;scanLink.hidden=false;}
+  scannerStatus.textContent='QR code decoded. Review the content before using it.';
+ }catch(err){scannerStatus.textContent=err instanceof Error?err.message:'Unable to scan image.';}
+ finally{scanButton.disabled=false;}
+});
+scanCopy.addEventListener('click',async()=>{
+ try{await navigator.clipboard.writeText(scanResult.value);scannerStatus.textContent='Copied to clipboard.';}
+ catch{scannerStatus.textContent='Clipboard unavailable. Select and copy the decoded content manually.';}
 });
 makeFields();
 frameTemplate.dispatchEvent(new Event('change'));
