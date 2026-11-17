@@ -345,7 +345,9 @@ function renderLibrary(){
   const meta=document.createElement('span');meta.textContent=item.kind+' · '+new Date(item.createdAt).toLocaleDateString();
   const load=document.createElement('button');load.type='button';load.textContent='Load';
   load.addEventListener('click',()=>{
-   kind.value=item.kind;makeFields();
+   kind.dispatchEvent(new Event('format-reveal'));
+   kind.value=item.kind;
+   kind.dispatchEvent(new Event('change'));
    inputs.querySelectorAll<HTMLInputElement|HTMLTextAreaElement|HTMLSelectElement>('[data-field]').forEach(el=>{
     const value=item.values[el.dataset.field!]??'';
     if(el instanceof HTMLInputElement&&el.type==='checkbox')el.checked=value==='true';
