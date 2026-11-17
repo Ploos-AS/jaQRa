@@ -1,4 +1,5 @@
 import './style.css';
+import { QRValidationState } from './validation-state';
 import { renderSVG } from './qr';
 import { styledSVG, styledPNG, type ModuleStyle } from './styling';
 import { verifySVG } from './verify';
@@ -59,9 +60,10 @@ function updateFrame(){const copy=frameCopy(frameTemplate.value as FrameTemplate
 let latestSVG = '';
 let latestPayload = '';
 function values(): Record<string,string> { const out:Record<string,string>={}; inputs.querySelectorAll<HTMLInputElement|HTMLTextAreaElement|HTMLSelectElement>('[data-field]').forEach(el=>out[el.dataset.field!]=el instanceof HTMLInputElement && el.type==='checkbox'?String(el.checked):el.value); return out; }
-function makeFields(){ ++request; invalidateQR(); inputs.replaceChildren(); for(const [key,label,type] of fields[kind.value as QRKind]) { const wrap=document.createElement('div'); const lbl=document.createElement('label');lbl.htmlFor='field-'+key;lbl.textContent=label; let el:HTMLInputElement|HTMLTextAreaElement|HTMLSelectElement; if(type==='textarea')el=document.createElement('textarea'); else if(type==='select'){const select=document.createElement('select');for(const option of ['WPA','WEP','nopass']){const item=document.createElement('option');item.value=option;item.textContent=option==='nopass'?'Open (no password)':option;select.append(item);}el=select;} else {const input=document.createElement('input');input.type=type;el=input;}el.id='field-'+key;el.dataset.field=key;wrap.append(lbl,el);inputs.append(wrap); } void update(); }
-let request = 0;
+function makeFields(){ invalidateQR(); inputs.replaceChildren(); for(const [key,label,type] of fields[kind.value as QRKind]) { const wrap=document.createElement('div'); const lbl=document.createElement('label');lbl.htmlFor='field-'+key;lbl.textContent=label; let el:HTMLInputElement|HTMLTextAreaElement|HTMLSelectElement; if(type==='textarea')el=document.createElement('textarea'); else if(type==='select'){const select=document.createElement('select');for(const option of ['WPA','WEP','nopass']){const item=document.createElement('option');item.value=option;item.textContent=option==='nopass'?'Open (no password)':option;select.append(item);}el=select;} else {const input=document.createElement('input');input.type=type;el=input;}el.id='field-'+key;el.dataset.field=key;wrap.append(lbl,el);inputs.append(wrap); } void update(); }
+const validationState = new QRValidationState();
 function invalidateQR() {
+  validationState.invalidate();
   latestSVG = '';
   latestPayload = '';
   librarySave.disabled = true;
@@ -70,25 +72,25 @@ function invalidateQR() {
   printButton.disabled = true;
 }
 async function update() {
-  const current = ++request;
   invalidateQR();
+  const current = validationState.token;
   try {
     const text = buildPayload(kind.value as QRKind, values());
     const currentDesign = design();
     contrast.textContent = 'Contrast: '+contrastRatio(currentDesign.foreground,currentDesign.background).toFixed(1)+':1';
     const baseSVG = moduleStyle.value === 'square' ? await renderSVG(text, currentDesign) : styledSVG(text, currentDesign, moduleStyle.value as ModuleStyle);
     const svg = logoData ? overlayLogo(baseSVG, { dataURL: logoData, sizePercent: Number(logoSize.value) }) : baseSVG;
-    if (current !== request) return;
+    if (!validationState.isCurrent(current)) return;
     preview.innerHTML = svg;
     preview.setAttribute('aria-label','QR code preview for '+kind.options[kind.selectedIndex].text+'; verification pending');
     scanStatus.textContent = 'Checking scannability…';
     const check = await verifySVG(svg, text);
-    if (current !== request) return;
+    if (!validationState.isCurrent(current)) return;
     scanStatus.textContent = check.message;
     error.textContent = '';
-    if (check.valid) { preview.setAttribute('aria-label','Verified QR code preview for '+kind.options[kind.selectedIndex].text); latestSVG = svg; latestPayload = text; librarySave.disabled = false; svgButton.disabled = false; pngButton.disabled = false; printButton.disabled = false; updateFrame(); } else {preview.setAttribute('aria-label','QR code preview failed scannability check');printCode.replaceChildren();}
+    if (check.valid && validationState.accept(current,svg,text)) { preview.setAttribute('aria-label','Verified QR code preview for '+kind.options[kind.selectedIndex].text); latestSVG = svg; latestPayload = text; librarySave.disabled = false; svgButton.disabled = false; pngButton.disabled = false; printButton.disabled = false; updateFrame(); } else {preview.setAttribute('aria-label','QR code preview failed scannability check');printCode.replaceChildren();}
   } catch (err) {
-    if (current !== request) return;
+    if (!validationState.isCurrent(current)) return;
     scanStatus.textContent = '';
     preview.textContent = 'Enter a URL or text to preview your QR code.';
     preview.setAttribute('aria-label','No QR code preview available');
