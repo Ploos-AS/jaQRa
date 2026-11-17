@@ -1,0 +1,41 @@
+name: Dependency security audit
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '15 7 * * 1'
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install locked dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Audit locked dependencies
+        id: audit
+        shell: bash
+        run: |
+          set +e
+          npm audit --json > npm-audit.json
+          status=$?
+          echo "exit_code=$status" >> "$GITHUB_OUTPUT"
+          echo "npm audit exit code: $status"
+          exit 0
+      - name: Summarize audit findings
+        env:
+          AUDIT_EXIT: ${{ steps.audit.outputs.exit_code }}
+        run: |
+          node scripts/summarize-audit.mjs npm-audit.json >> "$GITHUB_STEP_SUMMARY"
+          if [ "$AUDIT_EXIT" != 0 ]; then
+            echo 'Audit reported vulnerabilities or an error; inspect the summary and artifact.' >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - name: Upload audit report
+        uses: actions/upload-artifact@v4
+        with:
+          name: npm-dependency-audit
+          path: npm-audit.json
+          retention-days: 14
