@@ -25,9 +25,9 @@ test('generates precache with JS, CSS and shell files',async()=>{
  const dir=await fixture();try{
   build(dir);
   const sw=await readFile(join(dir,'dist','sw.js'),'utf8');
-  assert.match(sw,/assets\\/app\\.123\\.js/);
-  assert.match(sw,/assets\\/app\\.123\\.css/);
-  assert.match(sw,/index\\.html/);
+  assert.ok(sw.includes('/assets/app.123.js'));
+  assert.ok(sw.includes('/assets/app.123.css'));
+  assert.ok(sw.includes('/index.html'));
   assert.doesNotMatch(sw,/BUILD_PRECACHE/);
  }finally{await rm(dir,{recursive:true,force:true});}
 });
