@@ -18,13 +18,12 @@ Install applications on their intended permanent application host from day one. 
 
 ```text
 /srv/ploos-apps/jaqra/
-  releases/<immutable-release-id>/
-  current -> releases/<immutable-release-id>
-  shared/              # persistent app-specific configuration; no secrets in Git
-  deploy/              # Compose configuration and deployment metadata
+  data/                 # existing persistent-data directory
+  releases/             # existing releases directory
+  # current pointer, Compose config and metadata: location not yet agreed
 ```
 
-The **existing host root** is `/srv/ploos-apps/` and the `jaqra` directory already exists on Forseti, as confirmed by an operator directory listing on 2026-11-17. The internal `releases/current/shared/deploy` layout shown above is **only a proposal**, not a verified description of the existing `jaqra` directory or the implemented Ploos-Deploy schema. Confirm root paths, ownership, symlink safety, Compose project identity, image digest, state format, locks and rollback behavior with Ploos-Deploy before using it. Ploos-Deploy's own architecture currently requires refusal of unmanaged projects and symlink/path traversal protection; an adoption feature must preserve those safeguards.
+The **existing host root** is `/srv/ploos-apps/`. Operator listings on 2026-11-17 confirm that `jaqra`, `kaqen`, and `forenio` each have root-owned `data/` and `releases/` directories, while `/srv/ploos-apps/shared/` is empty. No `current` pointer or app-specific `deploy/` directory was shown. Preserve the existing directories; the location of release pointers, Compose config and deployment metadata remains **undecided**. This is not proof that any of the apps is running. Confirm root paths, ownership, symlink safety, Compose project identity, image digest, state format, locks and rollback behavior with Ploos-Deploy before using it. Ploos-Deploy's own architecture currently requires refusal of unmanaged projects and symlink/path traversal protection; an adoption feature must preserve those safeguards.
 
 ## Adoption contract to implement and verify in Ploos-Deploy
 
@@ -47,7 +46,7 @@ The **existing host root** is `/srv/ploos-apps/` and the `jaqra` directory alrea
 
 ## Gate before first permanent installation
 
-- [ ] Inspect the existing `/srv/ploos-apps/jaqra/` directory, Compose projects and host Caddy configuration **read-only**; directory existence alone does not establish a running deployment.\n- [ ] Confirm Forseti is the approved **permanent** app host for jaQRa and verify its operational readiness.
+- [ ] Inspect existing Compose projects and host Caddy configuration **read-only**; directory existence alone does not establish a running deployment. Operator `docker compose ls -a` returned Docker socket permission denied; inspect with `sudo docker compose ls -a` rather than adding `pgo` to the `docker` group.\n- [ ] Confirm Forseti is the approved **permanent** app host for jaQRa and verify its operational readiness.
 - [ ] Agree the actual on-disk layout and adoption state contract with Ploos-Deploy maintainers.
 - [ ] Implement and test the guarded Ploos-Deploy adoption workflow on a **disposable** Compose app.
 - [ ] Verify install, read-only discovery, adoption, updates, failure injection, explicit rollback and routing continuity.
