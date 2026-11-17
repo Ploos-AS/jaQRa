@@ -84,5 +84,5 @@ jobs:
         run: |
           echo "### jaQRa GHCR image" >> "$GITHUB_STEP_SUMMARY"
           echo 'Use this immutable reference in Forseti Compose (after separate approval):' >> "$GITHUB_STEP_SUMMARY"
-          echo "`ghcr.io/ploos-as/jaqra@${DIGEST}`" >> "$GITHUB_STEP_SUMMARY"
+          printf '\x60ghcr.io/ploos-as/jaqra@%s\x60\n' "$DIGEST" >> "$GITHUB_STEP_SUMMARY"
           echo 'No deployment or DNS changes were performed.' >> "$GITHUB_STEP_SUMMARY"
