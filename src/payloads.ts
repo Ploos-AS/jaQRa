@@ -1,5 +1,6 @@
+import { mecard, calendarEvent, sepaPayment } from './extended-payloads';
 import { cryptoPayload } from './crypto';
-export type QRKind = 'url' | 'text' | 'wifi' | 'vcard' | 'email' | 'sms' | 'phone' | 'geo' | 'bitcoin' | 'monero' | 'ethereum' | 'lightning' | 'solana';
+export type QRKind = 'url' | 'text' | 'wifi' | 'vcard' | 'email' | 'sms' | 'phone' | 'geo' | 'bitcoin' | 'monero' | 'ethereum' | 'lightning' | 'solana' | 'mecard' | 'calendar' | 'sepa';
 export const fields: Record<QRKind, Array<[string,string,string]>> = {
  url: [['url','Website URL','url']], text: [['text','Text','textarea']],
  wifi: [['ssid','Network name (SSID)','text'],['password','Password','password'],['security','Security: WPA, WEP or nopass','select'],['hidden','Hidden network','checkbox']],
@@ -12,7 +13,10 @@ export const fields: Record<QRKind, Array<[string,string,string]>> = {
  monero: [['address','Monero receiving address or subaddress','text'],['amount','Amount in XMR (optional)','text']],
  ethereum: [['address','Ethereum address (0x...)','text']],
  lightning: [['invoice','BOLT11 Lightning invoice','textarea']],
- solana: [['address','Solana receiving address','text']]
+ solana: [['address','Solana receiving address','text']],
+ mecard: [['name','Full name','text'],['phone','Phone','tel'],['email','Email','email'],['website','Website','url'],['address','Address','text']],
+ calendar: [['title','Event title','text'],['start','Start UTC (YYYYMMDDTHHMMSSZ)','text'],['end','End UTC (YYYYMMDDTHHMMSSZ)','text'],['location','Location (optional)','text'],['description','Description (optional)','textarea']],
+ sepa: [['name','Beneficiary name','text'],['iban','IBAN','text'],['bic','BIC (optional)','text'],['amount','EUR amount (optional)','text'],['reference','Payment message (optional)','text']]
 };
 const required = (value: string, label: string) => { if (!value.trim()) throw new Error(label + ' is required.'); return value.trim(); };
 const wifiEscape = (s: string) => s.replace(/([\\;,:"])/g, '\\$1');
@@ -21,6 +25,9 @@ const clean = (s: string) => s.replace(/[\r\n]/g,' ');
 export function buildPayload(kind: QRKind, values: Record<string,string>): string {
  const v = (key:string) => values[key] || '';
  switch(kind) {
+  case 'mecard': return mecard(values);
+  case 'calendar': return calendarEvent(values);
+  case 'sepa': return sepaPayment(values);
   case 'bitcoin': case 'monero': case 'ethereum': case 'lightning': case 'solana': return cryptoPayload(kind,values);
   case 'url': { const url = required(v('url'),'Website URL'); const parsed = new URL(url); if (!['http:','https:'].includes(parsed.protocol)) throw new Error('Use an HTTP or HTTPS URL.'); return url; }
   case 'text': return required(v('text'),'Text');
