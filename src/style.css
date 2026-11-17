@@ -106,3 +106,12 @@
  :where(a,button,input,select,textarea):focus-visible{outline:3px solid Highlight;outline-offset:3px}
  .preview{border:1px solid CanvasText}
 }
+
+/* Workspace navigation: accessible jump links for long, multi-tool pages. */
+.workspace-nav{max-width:1120px;margin:0 auto;padding:0 24px;display:flex;flex-wrap:wrap;gap:8px}
+.workspace-nav a{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:10px 16px;border:1px solid #cdd9e4;border-radius:999px;background:#fff;color:#12243c;font-size:14px;font-weight:700;text-decoration:none}
+.workspace-nav a:hover{background:#e7f7f3;border-color:#008a74}
+.workspace-nav a:focus-visible{outline:3px solid #006f61;outline-offset:3px}
+#qr-creator,#batch-studio,#qr-library,#qr-scanner{scroll-margin-top:20px}
+@media(max-width:480px){.workspace-nav{padding:0 10px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.workspace-nav a{padding:10px 8px;text-align:center}}
+@media print{.workspace-nav{display:none!important}}
