@@ -4,6 +4,7 @@ import { styledSVG, styledPNG, type ModuleStyle } from './styling';
 import { verifySVG } from './verify';
 import { scanImage, safeWebURL } from './scanner';
 import { LIBRARY_KEY, MAX_SAVED, parseLibrary, addSaved, toggleFavorite, removeSaved, type SavedQR } from './library';
+import { exportBackup, importBackup, mergeBackup, MAX_BACKUP_BYTES } from './library-backup';
 import { listCameras, openCamera, stopCamera, decodeVideoFrame } from './camera';
 import { parseCSV, batchFilesZip, type BatchFormat } from './batch';
 import { defaultPaper, labelLayout, type PaperSize, type LabelCount } from './labels';
@@ -24,7 +25,7 @@ root.innerHTML = `
     <p class="hint" id="scan-status" role="status" aria-live="polite"></p><div class="actions"><button id="svg" disabled>Download SVG</button><button id="png" disabled>Download PNG</button><button id="print" disabled>Print A4 / Save PDF</button></div></div>
   </section>
   <section class="batch-panel"><h2>Batch Studio</h2><p>Import a CSV file with <code>name,payload</code> columns (name optional). Up to 100 QR codes.</p><label for="batch-file">CSV file</label><input id="batch-file" type="file" accept=".csv,text/csv"><label for="batch-format">ZIP format</label><select id="batch-format"><option value="svg">SVG</option><option value="png">PNG</option></select><button id="batch-export" type="button">Generate ZIP</button><h3>Print labels</h3><label for="label-paper">Paper size</label><select id="label-paper"><option value="a4">A4</option><option value="letter">US Letter</option><option value="a5">A5</option><option value="legal">US Legal</option></select><label for="label-count">Labels per sheet</label><select id="label-count"><option>1</option><option>2</option><option selected>4</option><option>6</option><option>8</option><option>10</option></select><label for="label-margin">Page margins (mm)</label><input id="label-margin" type="number" min="5" max="25" value="12"><label for="label-gap">Label gap (mm)</label><input id="label-gap" type="number" min="0" max="15" value="4"><button id="label-print" type="button">Print labels / Save PDF</button><p id="batch-status" role="status" aria-live="polite"></p></section>
-  <section class="library-panel" aria-label="Saved QR codes"><h2>My QR Library</h2><p>Save QR designs on this device only. Nothing is saved automatically. Avoid saving passwords or other secrets on shared devices.</p><label for="library-title">Name for this QR code</label><input id="library-title" type="text" maxlength="80" placeholder="e.g. My website"><button id="library-save" type="button" disabled>Save current QR</button><label for="library-filter">Show</label><select id="library-filter"><option value="all">All saved</option><option value="favorites">Favorites only</option></select><div id="library-list" aria-live="polite"></div><button id="library-clear" type="button">Delete all saved codes</button><p id="library-status" role="status" aria-live="polite"></p><p class="hint">Stored in this browser only. Clearing site data also removes your saved codes. Logos are not stored in this version.</p></section>
+  <section class="library-panel" aria-label="Saved QR codes"><h2>My QR Library</h2><p>Save QR designs on this device only. Nothing is saved automatically. Avoid saving passwords or other secrets on shared devices.</p><label for="library-title">Name for this QR code</label><input id="library-title" type="text" maxlength="80" placeholder="e.g. My website"><button id="library-save" type="button" disabled>Save current QR</button><label for="library-filter">Show</label><select id="library-filter"><option value="all">All saved</option><option value="favorites">Favorites only</option></select><div id="library-list" aria-live="polite"></div><h3>Backup &amp; Restore</h3><p>Export a JSON backup to move your saved QR codes between devices. Backups may contain passwords or personal information: store them securely.</p><button id="library-export" type="button">Export JSON backup</button><label for="library-import-file">Import jaQRa backup (.json, max 1 MB)</label><input id="library-import-file" type="file" accept=".json,application/json"><label for="library-import-mode">Import behavior</label><select id="library-import-mode"><option value="merge">Merge with existing library</option><option value="replace">Replace entire library</option></select><button id="library-import" type="button">Import backup</button><hr><button id="library-clear" type="button">Delete all saved codes</button><p id="library-status" role="status" aria-live="polite"></p><p class="hint">Stored in this browser only. Clearing site data also removes your saved codes. Logos are not stored in this version.</p></section>
   <section class="scanner-panel" aria-label="QR Scanner Studio"><h2>QR Scanner Studio</h2><p>Decode an existing QR code from a PNG, JPEG or WebP image. Scanning happens in your browser; your image is not uploaded.</p><label for="scan-file">QR image (max 10 MB)</label><input id="scan-file" type="file" accept="image/png,image/jpeg,image/webp"><button id="scan-image" type="button">Scan image</button><h3>Scan with camera</h3><p>Camera access starts only when you press Start camera. Video stays on this device.</p><label for="camera-choice">Camera</label><select id="camera-choice"><option value="">Default (rear camera preferred)</option></select><button id="camera-start" type="button">Start camera</button><button id="camera-stop" type="button" disabled>Stop camera</button><video id="camera-preview" autoplay muted playsinline hidden aria-label="Live camera QR scanner"></video><p id="scanner-status" role="status" aria-live="polite"></p><label for="scan-result">Decoded content</label><textarea id="scan-result" rows="4" readonly placeholder="Decoded QR content appears here"></textarea><button id="scan-copy" type="button" disabled>Copy decoded content</button><a id="scan-link" target="_blank" rel="noopener noreferrer" hidden>Open website (external)</a><p class="hint">Links are never opened automatically. Check the address before visiting.</p></section>
   <section id="label-sheets" aria-label="Printable batch labels"></section><section id="print-sheet" aria-label="Printable QR sign"><h1 id="print-title"></h1><div id="print-code"></div><p id="print-subtitle"></p></section><footer>Made by Ploos AS · Privacy-first QR generation</footer>
 `;
@@ -337,6 +338,35 @@ libraryClear.addEventListener('click',()=>{
  if(window.confirm('Permanently delete all saved QR codes from this browser?')&&persistLibrary([])){
   renderLibrary();libraryStatus.textContent='All saved QR codes deleted.';
  }
+});
+const libraryExport=document.querySelector<HTMLButtonElement>('#library-export')!;
+const libraryImportFile=document.querySelector<HTMLInputElement>('#library-import-file')!;
+const libraryImportMode=document.querySelector<HTMLSelectElement>('#library-import-mode')!;
+const libraryImport=document.querySelector<HTMLButtonElement>('#library-import')!;
+libraryExport.addEventListener('click',()=>{
+ try{
+  const backup=exportBackup(savedQRs);
+  download(new Blob([backup],{type:'application/json'}),'jaqra-library-backup.json');
+  libraryStatus.textContent='Backup exported. Keep the file private; it may contain sensitive QR content.';
+ }catch(err){libraryStatus.textContent=err instanceof Error?err.message:'Export failed.';}
+});
+libraryImport.addEventListener('click',async()=>{
+ const file=libraryImportFile.files?.[0];
+ if(!file){libraryStatus.textContent='Choose a JSON backup file first.';return;}
+ if(file.size>MAX_BACKUP_BYTES){libraryStatus.textContent='Backup exceeds the 1 MB limit.';return;}
+ libraryImport.disabled=true;
+ try{
+  const incoming=importBackup(await file.text());
+  const replace=libraryImportMode.value==='replace';
+  const next=replace?incoming:mergeBackup(savedQRs,incoming);
+  const action=replace?'REPLACE all existing saved codes':'MERGE saved codes (matching IDs will be overwritten)';
+  if(!window.confirm(action+' with '+incoming.length+' imported entries? Backup files may contain private data.'))return;
+  if(persistLibrary(next)){
+   renderLibrary();libraryStatus.textContent='Imported '+incoming.length+' entries locally ('+next.length+' total).';
+   libraryImportFile.value='';
+  }
+ }catch(err){libraryStatus.textContent=err instanceof Error?err.message:'Unable to import backup.';}
+ finally{libraryImport.disabled=false;}
 });
 renderLibrary();
 makeFields();
