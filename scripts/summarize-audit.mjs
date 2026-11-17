@@ -17,7 +17,7 @@ if(!vulnerabilities||typeof vulnerabilities!=='object'){
  const entries=Object.entries(vulnerabilities).sort(([a],[b])=>a.localeCompare(b));
  if(!entries.length)console.log('| None | — | — | — |');
  for(const [name,issue] of entries){
-  const safe=(s)=>String(s).replace(/\\|/g,'\\\\|').replace(/[\r\n]/g,' ');
+  const safe=(s)=>String(s).replace(/[|]/g,'&#124;').replace(/[\r\n]/g,' ');
   const fix=issue.fixAvailable===false?'No':typeof issue.fixAvailable==='object'?'Requires '+safe(issue.fixAvailable.name)+'@'+safe(issue.fixAvailable.version):'Yes';
   console.log('| '+safe(name)+' | '+safe(issue.severity)+' | '+(issue.isDirect?'Yes':'No')+' | '+fix+' |');
  }
