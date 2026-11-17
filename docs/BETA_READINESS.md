@@ -33,6 +33,10 @@ No managed/dynamic codes, account system, hosted library, billing, API or analyt
 3. Automated unit tests exist, but browser-based end-to-end and assistive-technology acceptance evidence has not been recorded here.
 4. Existing local storage and backups may contain sensitive QR data. Public documentation must not imply server synchronization or encrypted local storage.
 
+## Manual browser acceptance
+
+Use [the browser beta test runbook](BROWSER_BETA_TEST.md) to record Firefox, Chromium, Android Chrome and iOS Safari results. The runbook is a protocol only; it does not assert any browser has passed.
+
 ## Beta go/no-go decision
 
 A public beta may be proposed only after all P0 items have documented pass results, any security/privacy blockers are resolved, and a Ploos-Deploy-compatible deployment is reviewed and explicitly approved. A green CI run alone is **not** sufficient. Record the reviewer, date, tested commit and evidence links in a separate release checklist.
