@@ -73,7 +73,7 @@ function invalidateQR() {
 }
 async function update() {
   invalidateQR();
-  const current = validationState.invalidate();
+  const current = validationState.token;
   try {
     const text = buildPayload(kind.value as QRKind, values());
     const currentDesign = design();
