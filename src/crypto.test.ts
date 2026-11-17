@@ -8,7 +8,7 @@ describe('cryptocurrency QR payloads',()=>{
  it('encodes BIP21 bitcoin payment',()=>expect(buildPayload('bitcoin',{address:btc,amount:'0.001'})).toBe('bitcoin:'+btc+'?amount=0.001'));
  it('supports bitcoin address-only',()=>expect(buildPayload('bitcoin',{address:btc})).toBe('bitcoin:'+btc));
  it('encodes Monero payment URI',()=>expect(buildPayload('monero',{address:xmr,amount:'0.5'})).toBe('monero:'+xmr+'?tx_amount=0.5'));
- it('accepts Monero subaddress prefix',()=>expect(buildPayload('monero',{address:'8'+'A'.repeat(94)})).toStartWith('monero:8'));
+ it('accepts Monero subaddress prefix',()=>expect(buildPayload('monero',{address:'8'+'A'.repeat(94)})).toMatch(/^monero:8/));
  it('supports Ethereum address-only',()=>expect(buildPayload('ethereum',{address:eth})).toBe('ethereum:'+eth));
  it('supports Solana address-only',()=>expect(buildPayload('solana',{address:sol})).toBe('solana:'+sol));
  it('rejects malformed crypto addresses',()=>expect(()=>buildPayload('monero',{address:'bad'})).toThrow());
