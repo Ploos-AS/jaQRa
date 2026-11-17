@@ -115,3 +115,9 @@
 #qr-creator,#batch-studio,#qr-library,#qr-scanner{scroll-margin-top:20px}
 @media(max-width:480px){.workspace-nav{padding:0 10px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.workspace-nav a{padding:10px 8px;text-align:center}}
 @media print{.workspace-nav{display:none!important}}
+
+/* Optional name for downloaded QR assets. */
+.export-filename{width:100%;max-width:340px}
+.export-filename label{display:block;margin:0 0 8px;font-size:14px;font-weight:700}
+.export-filename input{width:100%;min-height:44px;border:1px solid #cdd9e4;border-radius:10px;padding:10px 12px;font:inherit}
+.export-filename .hint{margin:8px 0 0}
