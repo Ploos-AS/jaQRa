@@ -260,10 +260,18 @@ labelPrint.addEventListener('click',async()=>{
   document.body.dataset.paper=paper;
   batchStatus.textContent='Ready to print '+rows.length+' labels. Select '+layout.page.label+' in your browser print dialog.';
   window.print();
- }catch(err){batchStatus.textContent=err instanceof Error?err.message:'Unable to prepare labels.';labelSheets.replaceChildren();}
+ }catch(err){
+  document.body.classList.remove('printing-labels');
+  delete document.body.dataset.paper;
+  batchStatus.textContent=err instanceof Error?err.message:'Unable to prepare labels.';
+  labelSheets.replaceChildren();
+ }
  finally{setBatchStudioBusy(false);}
 });
-window.addEventListener('afterprint',()=>{document.body.classList.remove('printing-labels');});
+window.addEventListener('afterprint',()=>{
+ document.body.classList.remove('printing-labels');
+ delete document.body.dataset.paper;
+});
 batchButton.addEventListener('click',async()=>{
  if(batchStudioBusy)return;
  const file=batchFile.files?.[0];if(!file){batchStatus.textContent='Select a CSV file first.';return;}
