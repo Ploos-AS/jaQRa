@@ -11,13 +11,13 @@ Website (planned): **jaqra.com**
 - **Free static codes:** No account, watermark, tracking, expiration, or artificial generation limits.
 - **Local-first privacy:** Static payloads, including Wi-Fi credentials and contact details, are processed in the browser. Never transmit sensitive QR payloads to the server.
 - **Accessible by default:** Keyboard navigation, clear labels, visible focus, and usable mobile layouts.
-- **Interoperable:** Export PNG and SVG first, with PDF and batch generation to follow.
+- **Interoperable:** Export PNG and SVG, create CSV batches, and print QR signs and label sheets using the browser.
 - **Vendor-neutral core:** Reusable QR encoding components, with a permissively licensed core where dependencies allow.
 - **Honest dynamic-code model:** Dynamic codes require jaQRa-managed URLs and server availability; users should always understand this distinction.
 
-## Planned static formats
+## Supported static formats
 
-URL, text, Wi-Fi, vCard, MeCard, email, SMS, telephone, geographic coordinates, calendar events, and other standardized payloads where interoperability can be validated.
+Website URLs, plain text, Wi-Fi, vCard, email, SMS, telephone numbers, and geographic coordinates. Other formats, including MeCard and calendar events, are potential future additions.
 
 **Security note:** TOTP provisioning contains account secrets. If supported later, it must be entirely local, have explicit warnings, and never be logged or synced by default.
 
@@ -49,7 +49,11 @@ See [architecture](docs/ARCHITECTURE.md) and [contributing](CONTRIBUTING.md).
 
 ## Status
 
-Early project foundation. Features described above are **plans**, not a claim of shipped functionality.
+**Pre-beta development.** The browser app currently supports static QR creation, design presets and styles, optional logos, PNG/SVG downloads, QR scanning (image and camera), CSV batch export, printable signs and labels, and an opt-in local QR library with collections and JSON backup/restore. These capabilities are implemented but have **not yet passed a complete public beta acceptance review**.
+
+Dynamic codes, accounts, billing, teams and hosted analytics remain planned rather than available. A live jaQRa deployment has not been authorized.
+
+See [beta readiness review](docs/BETA_READINESS.md) for release blockers, manual checks and go/no-go criteria.
 
 ## Ownership and license
 
