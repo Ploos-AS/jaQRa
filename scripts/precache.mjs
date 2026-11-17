@@ -16,7 +16,16 @@ files.sort();
 const required=['/index.html','/manifest.webmanifest','/icon.svg'];
 for(const path of required)if(!files.includes(path))throw new Error('Missing required offline asset: '+path);
 if(!files.some(path=>/^\/assets\/.*\.js$/.test(path)))throw new Error('No Vite JS bundle found for offline precache.');
-const version=createHash('sha256').update(JSON.stringify(files)).digest('hex').slice(0,16);
+// Include bytes, not only filenames: HTML, manifest or icon edits may keep the same path.
+const fingerprint=createHash('sha256');
+for(const url of files){
+ const path=join(dist,...url.slice(1).split('/'));
+ const bytes=await readFile(path);
+ fingerprint.update(url+'\\0');
+ fingerprint.update(String(bytes.length)+'\\0');
+ fingerprint.update(bytes);
+}
+const version=fingerprint.digest('hex').slice(0,16);
 const source=await readFile('public/sw.js','utf8');
 const marker='/* BUILD_PRECACHE */';
 if(!source.includes(marker))throw new Error('Service worker precache marker is missing.');
