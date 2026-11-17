@@ -1,7 +1,7 @@
 export interface LogoOptions { dataURL: string; sizePercent: number }
 export function validateLogoFile(file: File): void {
  if (!['image/png','image/jpeg','image/webp'].includes(file.type)) throw new Error('Use PNG, JPEG or WebP logos.');
- if (file.size > 1024*1024) throw new Error('Logo must be 1 MB or smaller.');
+ if (file.size > 5*1024*1024) throw new Error('Logo must be 5 MB or smaller.');
 }
 export function validateLogoSize(percent: number): number {
  if (!Number.isFinite(percent) || percent < 8 || percent > 18) throw new Error('Logo size must be between 8% and 18%.');
