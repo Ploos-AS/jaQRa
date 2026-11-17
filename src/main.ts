@@ -256,6 +256,10 @@ window.addEventListener('afterprint',()=>{document.body.classList.remove('printi
 batchButton.addEventListener('click',async()=>{
  const file=batchFile.files?.[0];if(!file){batchStatus.textContent='Select a CSV file first.';return;}
  batchButton.disabled=true;
+ const batchDesign=design();
+ const batchModuleStyle=moduleStyle.value as ModuleStyle;
+ const batchLogo=logoData;
+ const batchLogoSize=Number(logoSize.value);
  try{
   const rows=parseCSV(await file.text());
   if(!rows.length)throw new Error('CSV contains no data rows.');
@@ -264,8 +268,8 @@ batchButton.addEventListener('click',async()=>{
   for(let i=0;i<rows.length;i++){
    batchStatus.textContent='Validating '+(i+1)+' of '+rows.length+'…';
    const row=rows[i];
-   const base=moduleStyle.value==='square'?await renderSVG(row.payload,design()):styledSVG(row.payload,design(),moduleStyle.value as ModuleStyle);
-   const svg=logoData?overlayLogo(base,{dataURL:logoData,sizePercent:Number(logoSize.value)}):base;
+   const base=batchModuleStyle==='square'?await renderSVG(row.payload,batchDesign):styledSVG(row.payload,batchDesign,batchModuleStyle);
+   const svg=batchLogo?overlayLogo(base,{dataURL:batchLogo,sizePercent:batchLogoSize}):base;
    const result=await verifySVG(svg,row.payload);
    if(!result.valid)throw new Error('Row '+(i+2)+' failed QR validation: '+result.message);
    if(format==='png'){
