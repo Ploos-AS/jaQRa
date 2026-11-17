@@ -1,5 +1,5 @@
 import type {QRKind} from './payloads';
-export const categories=['All formats','Web & text','Connectivity','Contact & communication','Location','Cryptocurrency'] as const;
+export const categories=['All formats','Web & text','Connectivity','Contact & communication','Location','Cryptocurrency','Events','Payments'] as const;
 export type FormatCategory=typeof categories[number];
 export interface QRFormat {kind:QRKind;label:string;category:Exclude<FormatCategory,'All formats'>;description:string;keywords:string}
 export const qrFormats:QRFormat[]=[
@@ -15,7 +15,10 @@ export const qrFormats:QRFormat[]=[
  {kind:'monero',label:'Monero (XMR)',category:'Cryptocurrency',description:'Receiving address or subaddress and optional XMR amount',keywords:'crypto privacy payment'},
  {kind:'ethereum',label:'Ethereum (ETH)',category:'Cryptocurrency',description:'Address-only QR',keywords:'crypto wallet'},
  {kind:'lightning',label:'Bitcoin Lightning (BOLT11)',category:'Cryptocurrency',description:'Existing Lightning invoice',keywords:'crypto btc invoice'},
- {kind:'solana',label:'Solana (SOL)',category:'Cryptocurrency',description:'Address-only QR',keywords:'crypto wallet'}
+ {kind:'solana',label:'Solana (SOL)',category:'Cryptocurrency',description:'Address-only QR',keywords:'crypto wallet'},
+ {kind:'mecard',label:'Contact (MeCard)',category:'Contact & communication',description:'Compact contact card format',keywords:'person business card'},
+ {kind:'calendar',label:'Calendar event (iCalendar)',category:'Events',description:'Calendar event with UTC start and end',keywords:'ics appointment meeting'},
+ {kind:'sepa',label:'SEPA payment (EPC)',category:'Payments',description:'European EUR bank transfer QR',keywords:'bank iban sct epc euro'}
 ];
 export function filterFormats(query:string,category:FormatCategory='All formats'):QRFormat[]{
  const words=query.toLocaleLowerCase().trim().split(/\s+/).filter(Boolean);
