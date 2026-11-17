@@ -1,7 +1,33 @@
-const CACHE = 'jaqra-static-v1';
-self.addEventListener('install', event => { event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(['/', '/index.html', '/manifest.webmanifest', '/icon.svg']))); self.skipWaiting(); });
-self.addEventListener('activate', event => { event.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(key => key !== CACHE).map(key => caches.delete(key))))); self.clients.claim(); });
-self.addEventListener('fetch', event => {
-  if (event.request.method !== 'GET' || new URL(event.request.url).origin !== self.location.origin) return;
-  event.respondWith(fetch(event.request).then(response => { if (response.ok) { const copy = response.clone(); caches.open(CACHE).then(cache => cache.put(event.request, copy)); } return response; }).catch(() => caches.match(event.request)));
+/* BUILD_PRECACHE */
+const CACHE='jaqra-precache-'+PRECACHE_VERSION;
+const PRECACHE_PATHS=new Set(PRECACHE_URLS);
+
+self.addEventListener('install',event=>{
+ event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(PRECACHE_URLS)).then(()=>self.skipWaiting()));
+});
+self.addEventListener('activate',event=>{
+ event.waitUntil((async()=>{
+  const names=await caches.keys();
+  await Promise.all(names.filter(name=>name.startsWith('jaqra-')&&name!==CACHE).map(name=>caches.delete(name)));
+  await self.clients.claim();
+ })());
+});
+self.addEventListener('fetch',event=>{
+ const request=event.request;
+ if(request.method!=='GET')return;
+ const url=new URL(request.url);
+ if(url.origin!==self.location.origin)return;
+ if(request.mode==='navigate'){
+  event.respondWith(fetch(request).catch(async()=>{
+   const cache=await caches.open(CACHE);
+   return (await cache.match('/index.html'))||Response.error();
+  }));
+  return;
+ }
+ if(PRECACHE_PATHS.has(url.pathname)){
+  event.respondWith(caches.open(CACHE).then(async cache=>{
+   const cached=await cache.match(url.pathname);
+   return cached||fetch(request);
+  }));
+ }
 });
