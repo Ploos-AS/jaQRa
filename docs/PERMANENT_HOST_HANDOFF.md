@@ -20,10 +20,10 @@ Install applications on their intended permanent application host from day one. 
 /srv/ploos-apps/jaqra/
   data/                 # existing persistent-data directory
   releases/             # existing releases directory
-  # current pointer, Compose config and metadata: location not yet agreed
+  # release pointer and deployment metadata: location not yet agreed
 ```
 
-The **existing host root** is `/srv/ploos-apps/`. Operator listings on 2026-11-17 confirm that `jaqra`, `kaqen`, and `forenio` each have root-owned `data/` and `releases/` directories, while `/srv/ploos-apps/shared/` is empty. No `current` pointer or app-specific `deploy/` directory was shown. Preserve the existing directories; the location of release pointers, Compose config and deployment metadata remains **undecided**. This is not proof that any of the apps is running. Confirm root paths, ownership, symlink safety, Compose project identity, image digest, state format, locks and rollback behavior with Ploos-Deploy before using it. Ploos-Deploy's own architecture currently requires refusal of unmanaged projects and symlink/path traversal protection; an adoption feature must preserve those safeguards.
+The **existing host root** is `/srv/ploos-apps/`. Operator listings on 2026-11-17 confirm that `jaqra`, `kaqen`, and `forenio` each have root-owned `data/` and `releases/` directories, while `/srv/ploos-apps/shared/` is empty. No `current` pointer or app-specific `deploy/` directory was shown. Existing running Compose projects on Forseti use `/etc/ploos-apps/<app>/compose.yaml` (confirmed for Forenio and Qix), not an app-local `deploy/` directory. The intended jaQRa Compose path should therefore be `/etc/ploos-apps/jaqra/compose.yaml`, subject to checking the existing `/etc/ploos-apps/jaqra/` path before creating or changing anything. Preserve the existing directories; the location of release pointers, Compose config and deployment metadata remains **undecided**. This is not proof that any of the apps is running. Confirm root paths, ownership, symlink safety, Compose project identity, image digest, state format, locks and rollback behavior with Ploos-Deploy before using it. Ploos-Deploy's own architecture currently requires refusal of unmanaged projects and symlink/path traversal protection; an adoption feature must preserve those safeguards.
 
 ## Adoption contract to implement and verify in Ploos-Deploy
 
@@ -39,14 +39,14 @@ The **existing host root** is `/srv/ploos-apps/`. Operator listings on 2026-11-1
 ## jaQRa runtime expectations
 
 - Static PWA served by the existing image's Caddy on container port 8080; HTTP root can serve as a basic health check.
-- A stable, unique Compose project name, a health check, restart policy, resource controls, least-privilege container settings and loopback-only host port binding (or a private network reviewed for host-Caddy access).
+- A stable, unique Compose project name, a health check, restart policy, resource controls, least-privilege container settings and loopback-only host port binding (or a private network reviewed for host-Caddy access). Ports `18080` (Qix) and `18081` (Forenio) are already allocated; do not assume jaQRa's port without a host-level port inventory.
 - Host Caddy terminates HTTPS and routes to the stable upstream; the container's Caddy serves static assets only.
 - No browser QR payloads, Wi-Fi passwords, TOTP secrets or other local-only QR data should be sent to the server.
 - Release identity should be immutable and tied to a tested image digest; keep prior known-good image available for rollback.
 
 ## Gate before first permanent installation
 
-- [ ] Inspect existing Compose projects and host Caddy configuration **read-only**; directory existence alone does not establish a running deployment. Operator `docker compose ls -a` returned Docker socket permission denied; inspect with `sudo docker compose ls -a` rather than adding `pgo` to the `docker` group.\n- [ ] Confirm Forseti is the approved **permanent** app host for jaQRa and verify its operational readiness.
+- [x] Inspect Compose projects with `sudo docker compose ls -a`: `forenio-beta` uses `/etc/ploos-apps/forenio/compose.yaml` and `qix-sandbox` uses `/etc/ploos-apps/qix/compose.yaml`. Both app containers were healthy; Qix Redis was healthy. No jaQRa Compose project or container was listed.\n- [x] Confirm the host Caddy systemd service is active; **routing configuration has not yet been inspected**.\n- [ ] Inspect `/etc/ploos-apps/jaqra/` and host Caddy routing **read-only** before writing configuration. Docker commands require `sudo`; do not add `pgo` to the Docker group.\n- [ ] Confirm Forseti is the approved **permanent** app host for jaQRa and verify its operational readiness.
 - [ ] Agree the actual on-disk layout and adoption state contract with Ploos-Deploy maintainers.
 - [ ] Implement and test the guarded Ploos-Deploy adoption workflow on a **disposable** Compose app.
 - [ ] Verify install, read-only discovery, adoption, updates, failure injection, explicit rollback and routing continuity.
