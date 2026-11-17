@@ -5,10 +5,11 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host 0.0.0.0",
-    "build": "tsc --noEmit && vite build && node scripts/precache.mjs",
+    "build": "tsc --noEmit && vite build && node scripts/precache.mjs && npm run test:build",
     "preview": "vite preview",
     "test": "vitest run src && npm run test:precache",
-    "test:precache": "node --test scripts/precache.test.mjs"
+    "test:precache": "node --test scripts/precache.test.mjs",
+    "test:build": "node scripts/smoke-build.mjs"
   },
   "dependencies": {
     "qrcode": "^1.5.4",
