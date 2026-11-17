@@ -226,6 +226,10 @@ labelPaper.value=defaultPaper(navigator.language);
 labelPrint.addEventListener('click',async()=>{
  const file=batchFile.files?.[0];if(!file){batchStatus.textContent='Select a CSV file first.';return;}
  labelPrint.disabled=true;
+ const labelDesign=design();
+ const labelModuleStyle=moduleStyle.value as ModuleStyle;
+ const labelLogo=logoData;
+ const labelLogoSize=Number(logoSize.value);
  try{
   const rows=parseCSV(await file.text());if(!rows.length)throw new Error('CSV contains no data rows.');
   const paper=labelPaper.value as PaperSize,count=Number(labelCount.value) as LabelCount;
@@ -235,8 +239,8 @@ labelPrint.addEventListener('click',async()=>{
   for(let i=0;i<rows.length;i++){
    batchStatus.textContent='Preparing label '+(i+1)+' of '+rows.length+'…';
    const row=rows[i];
-   const base=moduleStyle.value==='square'?await renderSVG(row.payload,design()):styledSVG(row.payload,design(),moduleStyle.value as ModuleStyle);
-   const svg=logoData?overlayLogo(base,{dataURL:logoData,sizePercent:Number(logoSize.value)}):base;
+   const base=labelModuleStyle==='square'?await renderSVG(row.payload,labelDesign):styledSVG(row.payload,labelDesign,labelModuleStyle);
+   const svg=labelLogo?overlayLogo(base,{dataURL:labelLogo,sizePercent:labelLogoSize}):base;
    const check=await verifySVG(svg,row.payload);
    if(!check.valid)throw new Error('Row '+(i+2)+' failed QR validation: '+check.message);
    if(i%count===0){const sheet=document.createElement('div');sheet.className='label-page';sheet.style.width=layout.page.width+'mm';sheet.style.height=layout.page.height+'mm';sheet.style.gridTemplateColumns='repeat('+layout.columns+',1fr)';sheet.style.gridTemplateRows='repeat('+layout.rows+',1fr)';sheet.style.gap=gapMm+'mm';sheet.style.padding=marginMm+'mm';labelSheets.append(sheet);}
