@@ -3,6 +3,7 @@ import { renderSVG } from './qr';
 import { styledSVG, styledPNG, type ModuleStyle } from './styling';
 import { verifySVG } from './verify';
 import { scanImage, safeWebURL } from './scanner';
+import { LIBRARY_KEY, MAX_SAVED, parseLibrary, addSaved, toggleFavorite, removeSaved, type SavedQR } from './library';
 import { listCameras, openCamera, stopCamera, decodeVideoFrame } from './camera';
 import { parseCSV, batchFilesZip, type BatchFormat } from './batch';
 import { defaultPaper, labelLayout, type PaperSize, type LabelCount } from './labels';
@@ -23,6 +24,7 @@ root.innerHTML = `
     <p class="hint" id="scan-status" role="status" aria-live="polite"></p><div class="actions"><button id="svg" disabled>Download SVG</button><button id="png" disabled>Download PNG</button><button id="print" disabled>Print A4 / Save PDF</button></div></div>
   </section>
   <section class="batch-panel"><h2>Batch Studio</h2><p>Import a CSV file with <code>name,payload</code> columns (name optional). Up to 100 QR codes.</p><label for="batch-file">CSV file</label><input id="batch-file" type="file" accept=".csv,text/csv"><label for="batch-format">ZIP format</label><select id="batch-format"><option value="svg">SVG</option><option value="png">PNG</option></select><button id="batch-export" type="button">Generate ZIP</button><h3>Print labels</h3><label for="label-paper">Paper size</label><select id="label-paper"><option value="a4">A4</option><option value="letter">US Letter</option><option value="a5">A5</option><option value="legal">US Legal</option></select><label for="label-count">Labels per sheet</label><select id="label-count"><option>1</option><option>2</option><option selected>4</option><option>6</option><option>8</option><option>10</option></select><label for="label-margin">Page margins (mm)</label><input id="label-margin" type="number" min="5" max="25" value="12"><label for="label-gap">Label gap (mm)</label><input id="label-gap" type="number" min="0" max="15" value="4"><button id="label-print" type="button">Print labels / Save PDF</button><p id="batch-status" role="status" aria-live="polite"></p></section>
+  <section class="library-panel" aria-label="Saved QR codes"><h2>My QR Library</h2><p>Save QR designs on this device only. Nothing is saved automatically. Avoid saving passwords or other secrets on shared devices.</p><label for="library-title">Name for this QR code</label><input id="library-title" type="text" maxlength="80" placeholder="e.g. My website"><button id="library-save" type="button" disabled>Save current QR</button><label for="library-filter">Show</label><select id="library-filter"><option value="all">All saved</option><option value="favorites">Favorites only</option></select><div id="library-list" aria-live="polite"></div><button id="library-clear" type="button">Delete all saved codes</button><p id="library-status" role="status" aria-live="polite"></p><p class="hint">Stored in this browser only. Clearing site data also removes your saved codes. Logos are not stored in this version.</p></section>
   <section class="scanner-panel" aria-label="QR Scanner Studio"><h2>QR Scanner Studio</h2><p>Decode an existing QR code from a PNG, JPEG or WebP image. Scanning happens in your browser; your image is not uploaded.</p><label for="scan-file">QR image (max 10 MB)</label><input id="scan-file" type="file" accept="image/png,image/jpeg,image/webp"><button id="scan-image" type="button">Scan image</button><h3>Scan with camera</h3><p>Camera access starts only when you press Start camera. Video stays on this device.</p><label for="camera-choice">Camera</label><select id="camera-choice"><option value="">Default (rear camera preferred)</option></select><button id="camera-start" type="button">Start camera</button><button id="camera-stop" type="button" disabled>Stop camera</button><video id="camera-preview" autoplay muted playsinline hidden aria-label="Live camera QR scanner"></video><p id="scanner-status" role="status" aria-live="polite"></p><label for="scan-result">Decoded content</label><textarea id="scan-result" rows="4" readonly placeholder="Decoded QR content appears here"></textarea><button id="scan-copy" type="button" disabled>Copy decoded content</button><a id="scan-link" target="_blank" rel="noopener noreferrer" hidden>Open website (external)</a><p class="hint">Links are never opened automatically. Check the address before visiting.</p></section>
   <section id="label-sheets" aria-label="Printable batch labels"></section><section id="print-sheet" aria-label="Printable QR sign"><h1 id="print-title"></h1><div id="print-code"></div><p id="print-subtitle"></p></section><footer>Made by Ploos AS · Privacy-first QR generation</footer>
 `;
@@ -70,6 +72,7 @@ async function update() {
     latestPayload = '';
     preview.innerHTML = svg;
     scanStatus.textContent = 'Checking scannability…';
+    librarySave.disabled = true;
     svgButton.disabled = true;
     pngButton.disabled = true;
     printButton.disabled = true;
@@ -77,7 +80,7 @@ async function update() {
     if (current !== request) return;
     scanStatus.textContent = check.message;
     error.textContent = '';
-    if (check.valid) { latestSVG = svg; latestPayload = text; svgButton.disabled = false; pngButton.disabled = false; printButton.disabled = false; updateFrame(); } else {printCode.replaceChildren();}
+    if (check.valid) { latestSVG = svg; latestPayload = text; librarySave.disabled = false; svgButton.disabled = false; pngButton.disabled = false; printButton.disabled = false; updateFrame(); } else {printCode.replaceChildren();}
   } catch (err) {
     if (current !== request) return;
     latestSVG = '';
@@ -274,6 +277,68 @@ cameraStop.addEventListener('click',()=>{clearCamera();scannerStatus.textContent
 window.addEventListener('pagehide',clearCamera);
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&cameraStream){clearCamera();scannerStatus.textContent='Camera stopped when the page was hidden.';}});
 void refreshCameras();
+const libraryTitle=document.querySelector<HTMLInputElement>('#library-title')!;
+const librarySave=document.querySelector<HTMLButtonElement>('#library-save')!;
+const libraryFilter=document.querySelector<HTMLSelectElement>('#library-filter')!;
+const libraryList=document.querySelector<HTMLDivElement>('#library-list')!;
+const libraryClear=document.querySelector<HTMLButtonElement>('#library-clear')!;
+const libraryStatus=document.querySelector<HTMLParagraphElement>('#library-status')!;
+let savedQRs:SavedQR[]=[];
+try{savedQRs=parseLibrary(localStorage.getItem(LIBRARY_KEY));}
+catch{libraryStatus.textContent='Browser storage is unavailable. Saving may not work.';}
+function persistLibrary(next:SavedQR[]):boolean{
+ try{localStorage.setItem(LIBRARY_KEY,JSON.stringify(next));savedQRs=next;return true;}
+ catch{libraryStatus.textContent='Unable to save: browser storage may be full or disabled.';return false;}
+}
+function renderLibrary(){
+ libraryList.replaceChildren();
+ const shown=savedQRs.filter(item=>libraryFilter.value==='all'||item.favorite);
+ if(!shown.length){const empty=document.createElement('p');empty.textContent='No saved QR codes in this view.';libraryList.append(empty);}
+ for(const item of shown){
+  const row=document.createElement('div');row.className='library-row';
+  const title=document.createElement('strong');title.textContent=item.title;
+  const meta=document.createElement('span');meta.textContent=item.kind+' · '+new Date(item.createdAt).toLocaleDateString();
+  const load=document.createElement('button');load.type='button';load.textContent='Load';
+  load.addEventListener('click',()=>{
+   kind.value=item.kind;makeFields();
+   inputs.querySelectorAll<HTMLInputElement|HTMLTextAreaElement|HTMLSelectElement>('[data-field]').forEach(el=>{
+    const value=item.values[el.dataset.field!]??'';
+    if(el instanceof HTMLInputElement&&el.type==='checkbox')el.checked=value==='true';
+    else el.value=value;
+   });
+   color.value=item.design.foreground;background.value=item.design.background;margin.value=String(item.design.margin);
+   moduleStyle.value=item.moduleStyle;preset.value='custom';logoData='';logoFile.value='';
+   libraryTitle.value=item.title;libraryStatus.textContent='Loaded '+item.title+'.';
+   void update();
+  });
+  const favorite=document.createElement('button');favorite.type='button';favorite.textContent=item.favorite?'★ Unfavorite':'☆ Favorite';
+  favorite.setAttribute('aria-label',(item.favorite?'Remove favorite: ':'Add favorite: ')+item.title);
+  favorite.addEventListener('click',()=>{if(persistLibrary(toggleFavorite(savedQRs,item.id)))renderLibrary();});
+  const remove=document.createElement('button');remove.type='button';remove.textContent='Delete';
+  remove.setAttribute('aria-label','Delete '+item.title);
+  remove.addEventListener('click',()=>{if(window.confirm('Delete saved QR "'+item.title+'"?')&&persistLibrary(removeSaved(savedQRs,item.id)))renderLibrary();});
+  row.append(title,meta,load,favorite,remove);libraryList.append(row);
+ }
+ libraryClear.disabled=savedQRs.length===0;
+}
+librarySave.addEventListener('click',()=>{
+ if(!latestPayload){libraryStatus.textContent='Create a valid QR code first.';return;}
+ const title=libraryTitle.value.trim();
+ if(!title){libraryStatus.textContent='Enter a name before saving.';libraryTitle.focus();return;}
+ const entry:SavedQR={id:crypto.randomUUID(),title,kind:kind.value as QRKind,values:values(),
+  design:design(),moduleStyle:moduleStyle.value as ModuleStyle,createdAt:new Date().toISOString(),favorite:false};
+ if(persistLibrary(addSaved(savedQRs,entry))){
+  renderLibrary();libraryStatus.textContent='Saved locally. Up to '+MAX_SAVED+' entries are kept.';
+ }
+});
+libraryFilter.addEventListener('change',renderLibrary);
+libraryClear.addEventListener('click',()=>{
+ if(!savedQRs.length)return;
+ if(window.confirm('Permanently delete all saved QR codes from this browser?')&&persistLibrary([])){
+  renderLibrary();libraryStatus.textContent='All saved QR codes deleted.';
+ }
+});
+renderLibrary();
 makeFields();
 frameTemplate.dispatchEvent(new Event('change'));
 if ('serviceWorker' in navigator) window.addEventListener('load', () => { navigator.serviceWorker.register('/sw.js').catch(() => {}); });

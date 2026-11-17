@@ -45,3 +45,12 @@
 #camera-preview:not([hidden]){display:block;width:100%;max-width:560px;max-height:400px;object-fit:contain;background:#101820;border-radius:12px;margin:12px 0}
 #camera-choice{display:block;max-width:100%;margin-bottom:12px}
 @media print{#camera-preview{display:none!important}}
+
+.library-panel{max-width:1060px;margin:0 auto 70px;padding:32px;background:#fff;border:1px solid #e5ebf1;border-radius:20px}
+.library-panel p{color:#66778b;line-height:1.6}
+.library-panel input,.library-panel select{display:block;max-width:100%;margin-bottom:14px}
+.library-panel button{margin:4px 10px 4px 0}
+.library-row{display:flex;align-items:center;flex-wrap:wrap;gap:8px;padding:12px 0;border-bottom:1px solid #e5ebf1}
+.library-row strong{min-width:130px;overflow-wrap:anywhere}
+.library-row span{font-size:13px;color:#66778b;margin-right:auto}
+@media print{.library-panel{display:none!important}}
