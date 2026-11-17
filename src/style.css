@@ -32,3 +32,12 @@
 }
 
 @media print{body.printing-labels[data-paper="a5"] .label-page{width:148mm;height:210mm}body.printing-labels[data-paper="legal"] .label-page{width:215.9mm;height:355.6mm}}
+
+.scanner-panel{max-width:1060px;margin:0 auto 70px;padding:32px;background:#fff;border:1px solid #e5ebf1;border-radius:20px}
+.scanner-panel p{color:#66778b;line-height:1.6}
+.scanner-panel label{display:block;margin:16px 0 8px;font-weight:600}
+.scanner-panel input,.scanner-panel textarea{display:block;margin-bottom:14px;max-width:100%}
+.scanner-panel textarea{box-sizing:border-box;width:100%;padding:12px;border:1px solid #cdd9e4;border-radius:10px;font:inherit;resize:vertical}
+.scanner-panel button{margin:0 12px 12px 0}
+.scanner-panel a:not([hidden]){display:inline-block;margin:0 12px}
+@media print{.scanner-panel{display:none!important}}
