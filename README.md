@@ -25,6 +25,10 @@ URL, text, Wi-Fi, vCard, MeCard, email, SMS, telephone, geographic coordinates, 
 
 Dynamic redirects, managed destinations, custom domains, team libraries, opt-in privacy-conscious analytics, bulk generation, and API access.
 
+## Deployment policy
+
+jaQRa will use [Ploos-Deploy](https://github.com/Ploos-AS/Ploos-Deploy) for managed deployments when that project supports non-test applications. Ploos-Deploy is still experimental; no live jaQRa deployment is authorized or configured. The existing Docker Compose preview is for isolated development testing only. See [preview deployment notes](docs/PREVIEW_DEPLOYMENT.md).
+
 ## Technology direction
 
 - Frontend: TypeScript PWA, capable of working offline.
