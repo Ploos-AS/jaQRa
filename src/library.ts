@@ -9,7 +9,7 @@ export interface SavedQR {
  design:QRDesign; moduleStyle:ModuleStyle; createdAt:string; favorite:boolean;
  collection?:string;
 }
-const kinds=new Set<QRKind>(['url','text','wifi','vcard','email','sms','phone','geo','bitcoin','monero','ethereum','lightning','solana']);
+const kinds=new Set<QRKind>(['url','text','wifi','vcard','email','sms','phone','geo','bitcoin','monero','ethereum','lightning','solana','mecard','calendar','sepa']);
 const styles=new Set<ModuleStyle>(['square','rounded','dots']);
 export function validSavedQR(input:unknown):input is SavedQR {
  if(!input||typeof input!=='object')return false;
