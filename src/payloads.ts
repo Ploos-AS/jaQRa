@@ -1,6 +1,7 @@
+import { totpPayload, gs1DigitalLink } from './special-payloads';
 import { mecard, calendarEvent, sepaPayment } from './extended-payloads';
 import { cryptoPayload } from './crypto';
-export type QRKind = 'url' | 'text' | 'wifi' | 'vcard' | 'email' | 'sms' | 'phone' | 'geo' | 'bitcoin' | 'monero' | 'ethereum' | 'lightning' | 'solana' | 'mecard' | 'calendar' | 'sepa' | 'litecoin' | 'dogecoin' | 'bitcoincash';
+export type QRKind = 'url' | 'text' | 'wifi' | 'vcard' | 'email' | 'sms' | 'phone' | 'geo' | 'bitcoin' | 'monero' | 'ethereum' | 'lightning' | 'solana' | 'mecard' | 'calendar' | 'sepa' | 'litecoin' | 'dogecoin' | 'bitcoincash' | 'totp' | 'gs1';
 export const fields: Record<QRKind, Array<[string,string,string]>> = {
  url: [['url','Website URL','url']], text: [['text','Text','textarea']],
  wifi: [['ssid','Network name (SSID)','text'],['password','Password','password'],['security','Security: WPA, WEP or nopass','select'],['hidden','Hidden network','checkbox']],
@@ -19,7 +20,9 @@ export const fields: Record<QRKind, Array<[string,string,string]>> = {
  sepa: [['name','Beneficiary name','text'],['iban','IBAN','text'],['bic','BIC (optional)','text'],['amount','EUR amount (optional)','text'],['reference','Payment message (optional)','text']],
  litecoin: [['address','Litecoin receiving address','text'],['amount','Amount in LTC (optional)','text']],
  dogecoin: [['address','Dogecoin receiving address','text'],['amount','Amount in DOGE (optional)','text']],
- bitcoincash: [['address','Bitcoin Cash CashAddr (no legacy addresses)','text'],['amount','Amount in BCH (optional)','text']]
+ bitcoincash: [['address','Bitcoin Cash CashAddr (no legacy addresses)','text'],['amount','Amount in BCH (optional)','text']],
+ totp: [['issuer','Service / issuer','text'],['account','Account name','text'],['secret','Existing Base32 TOTP secret (sensitive)','password'],['algorithm','Algorithm (SHA1, SHA256 or SHA512)','text'],['digits','Digits (6 or 8)','text'],['period','Period in seconds (default 30)','text']],
+ gs1: [['baseUrl','HTTPS GS1 Digital Link resolver','url'],['gtin','GTIN (8, 12, 13 or 14 digits)','text'],['lot','Batch / lot (optional)','text'],['serial','Serial (optional, instead of lot)','text']]
 };
 const required = (value: string, label: string) => { if (!value.trim()) throw new Error(label + ' is required.'); return value.trim(); };
 const wifiEscape = (s: string) => s.replace(/([\\;,:"])/g, '\\$1');
@@ -28,6 +31,8 @@ const clean = (s: string) => s.replace(/[\r\n]/g,' ');
 export function buildPayload(kind: QRKind, values: Record<string,string>): string {
  const v = (key:string) => values[key] || '';
  switch(kind) {
+  case 'totp': return totpPayload(values);
+  case 'gs1': return gs1DigitalLink(values);
   case 'mecard': return mecard(values);
   case 'calendar': return calendarEvent(values);
   case 'sepa': return sepaPayment(values);
