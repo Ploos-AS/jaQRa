@@ -149,31 +149,37 @@ svgButton.addEventListener('click', () => {
   download(new Blob([latestSVG], { type: 'image/svg+xml' }), 'jaqra-qr.svg');
   exportStatus.textContent = 'SVG download started.';
 });
+let pngExportRequest = 0;
 pngButton.addEventListener('click', async () => {
   if (!latestSVG || !latestPayload || pngButton.disabled) return;
+  const request = ++pngExportRequest;
   const snapshot = latestSVG;
   const exportToken = validationState.token;
+  const isCurrentExport = () => request === pngExportRequest;
+  const isCurrentQR = () => validationState.isCurrent(exportToken) && snapshot === latestSVG && !!latestPayload;
   pngButton.disabled = true;
   exportStatus.textContent = 'Preparing PNG…';
   try {
     const png = await styledPNG(snapshot);
-    if (!validationState.isCurrent(exportToken) || snapshot !== latestSVG || !latestPayload) {
+    if (!isCurrentExport()) return;
+    if (!isCurrentQR()) {
       exportStatus.textContent = 'QR code changed during export. Please download again.';
       return;
     }
     const response = await fetch(png);
     if (!response.ok) throw new Error('PNG conversion failed');
     const blob = await response.blob();
-    if (!validationState.isCurrent(exportToken) || snapshot !== latestSVG || !latestPayload) {
+    if (!isCurrentExport()) return;
+    if (!isCurrentQR()) {
       exportStatus.textContent = 'QR code changed during export. Please download again.';
       return;
     }
     download(blob, 'jaqra-qr.png');
     exportStatus.textContent = 'PNG download started.';
   } catch {
-    exportStatus.textContent = 'Unable to export PNG. Try SVG instead.';
+    if (isCurrentExport()) exportStatus.textContent = 'Unable to export PNG. Try SVG instead.';
   } finally {
-    pngButton.disabled = !latestSVG;
+    if (isCurrentExport()) pngButton.disabled = !latestSVG;
   }
 });
 frameTemplate.addEventListener('change',()=>{const t=frameTemplates[frameTemplate.value as FrameTemplate];frameTitle.value=t.title;frameSubtitle.value=t.subtitle;updateFrame();});
