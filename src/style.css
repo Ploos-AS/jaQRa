@@ -41,3 +41,7 @@
 .scanner-panel button{margin:0 12px 12px 0}
 .scanner-panel a:not([hidden]){display:inline-block;margin:0 12px}
 @media print{.scanner-panel{display:none!important}}
+
+#camera-preview:not([hidden]){display:block;width:100%;max-width:560px;max-height:400px;object-fit:contain;background:#101820;border-radius:12px;margin:12px 0}
+#camera-choice{display:block;max-width:100%;margin-bottom:12px}
+@media print{#camera-preview{display:none!important}}
