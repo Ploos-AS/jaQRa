@@ -152,18 +152,19 @@ svgButton.addEventListener('click', () => {
 pngButton.addEventListener('click', async () => {
   if (!latestSVG || !latestPayload || pngButton.disabled) return;
   const snapshot = latestSVG;
+  const exportToken = validationState.token;
   pngButton.disabled = true;
   exportStatus.textContent = 'Preparing PNG…';
   try {
     const png = await styledPNG(snapshot);
-    if (snapshot !== latestSVG || !latestPayload) {
+    if (!validationState.isCurrent(exportToken) || snapshot !== latestSVG || !latestPayload) {
       exportStatus.textContent = 'QR code changed during export. Please download again.';
       return;
     }
     const response = await fetch(png);
     if (!response.ok) throw new Error('PNG conversion failed');
     const blob = await response.blob();
-    if (snapshot !== latestSVG || !latestPayload) {
+    if (!validationState.isCurrent(exportToken) || snapshot !== latestSVG || !latestPayload) {
       exportStatus.textContent = 'QR code changed during export. Please download again.';
       return;
     }
