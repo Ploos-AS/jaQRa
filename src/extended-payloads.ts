@@ -30,7 +30,7 @@ export function sepaPayment(values:Record<string,string>):string{
  if(bic&&!/^[A-Z]{6}[A-Z0-9]{2}(?:[A-Z0-9]{3})?$/.test(bic))throw new Error('Invalid BIC.');
  const reference=oneLine(values.reference||'','Reference');
  if(reference.length>35)throw new Error('Reference exceeds 35 characters.');
- const lines=['BCD','002','1','SCT',bic,name,iban,amount?'EUR'+amount:'','','',reference,''];
+ const lines=['BCD','002','1','SCT',bic,name,iban,amount?'EUR'+amount:'','','',reference];
  const payload=lines.join('\n');
  if(new TextEncoder().encode(payload).length>331)throw new Error('EPC QR payload exceeds 331 bytes.');
  return payload;
