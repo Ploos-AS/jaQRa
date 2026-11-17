@@ -59,10 +59,19 @@ function updateFrame(){const copy=frameCopy(frameTemplate.value as FrameTemplate
 let latestSVG = '';
 let latestPayload = '';
 function values(): Record<string,string> { const out:Record<string,string>={}; inputs.querySelectorAll<HTMLInputElement|HTMLTextAreaElement|HTMLSelectElement>('[data-field]').forEach(el=>out[el.dataset.field!]=el instanceof HTMLInputElement && el.type==='checkbox'?String(el.checked):el.value); return out; }
-function makeFields(){ inputs.replaceChildren(); for(const [key,label,type] of fields[kind.value as QRKind]) { const wrap=document.createElement('div'); const lbl=document.createElement('label');lbl.htmlFor='field-'+key;lbl.textContent=label; let el:HTMLInputElement|HTMLTextAreaElement|HTMLSelectElement; if(type==='textarea')el=document.createElement('textarea'); else if(type==='select'){const select=document.createElement('select');for(const option of ['WPA','WEP','nopass']){const item=document.createElement('option');item.value=option;item.textContent=option==='nopass'?'Open (no password)':option;select.append(item);}el=select;} else {const input=document.createElement('input');input.type=type;el=input;}el.id='field-'+key;el.dataset.field=key;wrap.append(lbl,el);inputs.append(wrap); } void update(); }
+function makeFields(){ ++request; invalidateQR(); inputs.replaceChildren(); for(const [key,label,type] of fields[kind.value as QRKind]) { const wrap=document.createElement('div'); const lbl=document.createElement('label');lbl.htmlFor='field-'+key;lbl.textContent=label; let el:HTMLInputElement|HTMLTextAreaElement|HTMLSelectElement; if(type==='textarea')el=document.createElement('textarea'); else if(type==='select'){const select=document.createElement('select');for(const option of ['WPA','WEP','nopass']){const item=document.createElement('option');item.value=option;item.textContent=option==='nopass'?'Open (no password)':option;select.append(item);}el=select;} else {const input=document.createElement('input');input.type=type;el=input;}el.id='field-'+key;el.dataset.field=key;wrap.append(lbl,el);inputs.append(wrap); } void update(); }
 let request = 0;
+function invalidateQR() {
+  latestSVG = '';
+  latestPayload = '';
+  librarySave.disabled = true;
+  svgButton.disabled = true;
+  pngButton.disabled = true;
+  printButton.disabled = true;
+}
 async function update() {
   const current = ++request;
+  invalidateQR();
   try {
     const text = buildPayload(kind.value as QRKind, values());
     const currentDesign = design();
@@ -70,15 +79,9 @@ async function update() {
     const baseSVG = moduleStyle.value === 'square' ? await renderSVG(text, currentDesign) : styledSVG(text, currentDesign, moduleStyle.value as ModuleStyle);
     const svg = logoData ? overlayLogo(baseSVG, { dataURL: logoData, sizePercent: Number(logoSize.value) }) : baseSVG;
     if (current !== request) return;
-    latestSVG = '';
-    latestPayload = '';
     preview.innerHTML = svg;
     preview.setAttribute('aria-label','QR code preview for '+kind.options[kind.selectedIndex].text+'; verification pending');
     scanStatus.textContent = 'Checking scannability…';
-    librarySave.disabled = true;
-    svgButton.disabled = true;
-    pngButton.disabled = true;
-    printButton.disabled = true;
     const check = await verifySVG(svg, text);
     if (current !== request) return;
     scanStatus.textContent = check.message;
@@ -86,16 +89,10 @@ async function update() {
     if (check.valid) { preview.setAttribute('aria-label','Verified QR code preview for '+kind.options[kind.selectedIndex].text); latestSVG = svg; latestPayload = text; librarySave.disabled = false; svgButton.disabled = false; pngButton.disabled = false; printButton.disabled = false; updateFrame(); } else {preview.setAttribute('aria-label','QR code preview failed scannability check');printCode.replaceChildren();}
   } catch (err) {
     if (current !== request) return;
-    latestSVG = '';
-    latestPayload = '';
     scanStatus.textContent = '';
     preview.textContent = 'Enter a URL or text to preview your QR code.';
     preview.setAttribute('aria-label','No QR code preview available');
     error.textContent = err instanceof Error ? err.message : 'Could not generate QR code.';
-    librarySave.disabled = true;
-    svgButton.disabled = true;
-    pngButton.disabled = true;
-    printButton.disabled = true;
     printCode.replaceChildren();
   }
 }
