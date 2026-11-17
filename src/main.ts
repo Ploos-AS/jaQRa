@@ -3,7 +3,7 @@ import { renderSVG } from './qr';
 import { styledSVG, styledPNG, type ModuleStyle } from './styling';
 import { verifySVG } from './verify';
 import { scanImage, safeWebURL } from './scanner';
-import { LIBRARY_KEY, MAX_SAVED, parseLibrary, addSaved, toggleFavorite, removeSaved, type SavedQR } from './library';
+import { LIBRARY_KEY, MAX_SAVED, parseLibrary, addSaved, toggleFavorite, removeSaved, normalizeCollection, collectionNames, assignCollection, removeCollection, type SavedQR } from './library';
 import { exportBackup, importBackup, mergeBackup, MAX_BACKUP_BYTES } from './library-backup';
 import { filterAndSortLibrary, type LibrarySort } from './library-search';
 import { listCameras, openCamera, stopCamera, decodeVideoFrame } from './camera';
@@ -26,7 +26,7 @@ root.innerHTML = `
     <p class="hint" id="scan-status" role="status" aria-live="polite"></p><div class="actions"><button id="svg" disabled>Download SVG</button><button id="png" disabled>Download PNG</button><button id="print" disabled>Print A4 / Save PDF</button></div></div>
   </section>
   <section class="batch-panel"><h2>Batch Studio</h2><p>Import a CSV file with <code>name,payload</code> columns (name optional). Up to 100 QR codes.</p><label for="batch-file">CSV file</label><input id="batch-file" type="file" accept=".csv,text/csv"><label for="batch-format">ZIP format</label><select id="batch-format"><option value="svg">SVG</option><option value="png">PNG</option></select><button id="batch-export" type="button">Generate ZIP</button><h3>Print labels</h3><label for="label-paper">Paper size</label><select id="label-paper"><option value="a4">A4</option><option value="letter">US Letter</option><option value="a5">A5</option><option value="legal">US Legal</option></select><label for="label-count">Labels per sheet</label><select id="label-count"><option>1</option><option>2</option><option selected>4</option><option>6</option><option>8</option><option>10</option></select><label for="label-margin">Page margins (mm)</label><input id="label-margin" type="number" min="5" max="25" value="12"><label for="label-gap">Label gap (mm)</label><input id="label-gap" type="number" min="0" max="15" value="4"><button id="label-print" type="button">Print labels / Save PDF</button><p id="batch-status" role="status" aria-live="polite"></p></section>
-  <section class="library-panel" aria-label="Saved QR codes"><h2>My QR Library</h2><p>Save QR designs on this device only. Nothing is saved automatically. Avoid saving passwords or other secrets on shared devices.</p><label for="library-title">Name for this QR code</label><input id="library-title" type="text" maxlength="80" placeholder="e.g. My website"><button id="library-save" type="button" disabled>Save current QR</button><label for="library-filter">Show</label><select id="library-filter"><option value="all">All saved</option><option value="favorites">Favorites only</option></select><label for="library-search">Search saved codes</label><input id="library-search" type="search" placeholder="Search by name or QR type" autocomplete="off"><label for="library-sort">Sort by</label><select id="library-sort"><option value="newest">Newest first</option><option value="oldest">Oldest first</option><option value="name-asc">Name A–Z</option><option value="name-desc">Name Z–A</option><option value="type">QR type</option></select><p id="library-count" role="status" aria-live="polite"></p><div id="library-list"></div><h3>Backup &amp; Restore</h3><p>Export a JSON backup to move your saved QR codes between devices. Backups may contain passwords or personal information: store them securely.</p><button id="library-export" type="button">Export JSON backup</button><label for="library-import-file">Import jaQRa backup (.json, max 1 MB)</label><input id="library-import-file" type="file" accept=".json,application/json"><label for="library-import-mode">Import behavior</label><select id="library-import-mode"><option value="merge">Merge with existing library</option><option value="replace">Replace entire library</option></select><button id="library-import" type="button">Import backup</button><hr><button id="library-clear" type="button">Delete all saved codes</button><p id="library-status" role="status" aria-live="polite"></p><p class="hint">Stored in this browser only. Clearing site data also removes your saved codes. Logos are not stored in this version.</p></section>
+  <section class="library-panel" aria-label="Saved QR codes"><h2>My QR Library</h2><p>Save QR designs on this device only. Nothing is saved automatically. Avoid saving passwords or other secrets on shared devices.</p><label for="library-title">Name for this QR code</label><input id="library-title" type="text" maxlength="80" placeholder="e.g. My website"><label for="library-new-collection">Collection (optional)</label><input id="library-new-collection" type="text" maxlength="40" placeholder="e.g. Business, Personal, Events"><button id="library-save" type="button" disabled>Save current QR</button><label for="library-filter">Show</label><select id="library-filter"><option value="all">All saved</option><option value="favorites">Favorites only</option></select><label for="library-search">Search saved codes</label><input id="library-search" type="search" placeholder="Search by name or QR type" autocomplete="off"><label for="library-collection-filter">Collection</label><select id="library-collection-filter"><option value="">All collections</option></select><button id="library-delete-collection" type="button" disabled>Delete selected collection</button><label for="library-sort">Sort by</label><select id="library-sort"><option value="newest">Newest first</option><option value="oldest">Oldest first</option><option value="name-asc">Name A–Z</option><option value="name-desc">Name Z–A</option><option value="type">QR type</option></select><p id="library-count" role="status" aria-live="polite"></p><div id="library-list"></div><h3>Backup &amp; Restore</h3><p>Export a JSON backup to move your saved QR codes between devices. Backups may contain passwords or personal information: store them securely.</p><button id="library-export" type="button">Export JSON backup</button><label for="library-import-file">Import jaQRa backup (.json, max 1 MB)</label><input id="library-import-file" type="file" accept=".json,application/json"><label for="library-import-mode">Import behavior</label><select id="library-import-mode"><option value="merge">Merge with existing library</option><option value="replace">Replace entire library</option></select><button id="library-import" type="button">Import backup</button><hr><button id="library-clear" type="button">Delete all saved codes</button><p id="library-status" role="status" aria-live="polite"></p><p class="hint">Stored in this browser only. Clearing site data also removes your saved codes. Logos are not stored in this version.</p></section>
   <section class="scanner-panel" aria-label="QR Scanner Studio"><h2>QR Scanner Studio</h2><p>Decode an existing QR code from a PNG, JPEG or WebP image. Scanning happens in your browser; your image is not uploaded.</p><label for="scan-file">QR image (max 10 MB)</label><input id="scan-file" type="file" accept="image/png,image/jpeg,image/webp"><button id="scan-image" type="button">Scan image</button><h3>Scan with camera</h3><p>Camera access starts only when you press Start camera. Video stays on this device.</p><label for="camera-choice">Camera</label><select id="camera-choice"><option value="">Default (rear camera preferred)</option></select><button id="camera-start" type="button">Start camera</button><button id="camera-stop" type="button" disabled>Stop camera</button><video id="camera-preview" autoplay muted playsinline hidden aria-label="Live camera QR scanner"></video><p id="scanner-status" role="status" aria-live="polite"></p><label for="scan-result">Decoded content</label><textarea id="scan-result" rows="4" readonly placeholder="Decoded QR content appears here"></textarea><button id="scan-copy" type="button" disabled>Copy decoded content</button><a id="scan-link" target="_blank" rel="noopener noreferrer" hidden>Open website (external)</a><p class="hint">Links are never opened automatically. Check the address before visiting.</p></section>
   <section id="label-sheets" aria-label="Printable batch labels"></section><section id="print-sheet" aria-label="Printable QR sign"><h1 id="print-title"></h1><div id="print-code"></div><p id="print-subtitle"></p></section><footer>Made by Ploos AS · Privacy-first QR generation</footer>
 `;
@@ -286,6 +286,9 @@ const libraryList=document.querySelector<HTMLDivElement>('#library-list')!;
 const librarySearch=document.querySelector<HTMLInputElement>('#library-search')!;
 const librarySort=document.querySelector<HTMLSelectElement>('#library-sort')!;
 const libraryCount=document.querySelector<HTMLParagraphElement>('#library-count')!;
+const libraryNewCollection=document.querySelector<HTMLInputElement>('#library-new-collection')!;
+const libraryCollectionFilter=document.querySelector<HTMLSelectElement>('#library-collection-filter')!;
+const libraryDeleteCollection=document.querySelector<HTMLButtonElement>('#library-delete-collection')!;
 const libraryClear=document.querySelector<HTMLButtonElement>('#library-clear')!;
 const libraryStatus=document.querySelector<HTMLParagraphElement>('#library-status')!;
 let savedQRs:SavedQR[]=[];
@@ -296,8 +299,14 @@ function persistLibrary(next:SavedQR[]):boolean{
  catch{libraryStatus.textContent='Unable to save: browser storage may be full or disabled.';return false;}
 }
 function renderLibrary(){
+ const currentCollection=libraryCollectionFilter.value;
+ const names=collectionNames(savedQRs);
+ libraryCollectionFilter.replaceChildren(new Option('All collections',''),new Option('Unfiled','__unfiled__'));
+ for(const name of names)libraryCollectionFilter.add(new Option(name,name));
+ libraryCollectionFilter.value=currentCollection===''||currentCollection==='__unfiled__'||names.includes(currentCollection)?currentCollection:'';
+ libraryDeleteCollection.disabled=!libraryCollectionFilter.value||libraryCollectionFilter.value==='__unfiled__';
  libraryList.replaceChildren();
- const shown=filterAndSortLibrary(savedQRs,librarySearch.value,libraryFilter.value==='favorites',librarySort.value as LibrarySort);
+ const shown=filterAndSortLibrary(savedQRs,librarySearch.value,libraryFilter.value==='favorites',librarySort.value as LibrarySort).filter(item=>!libraryCollectionFilter.value||(libraryCollectionFilter.value==='__unfiled__'?!item.collection:item.collection===libraryCollectionFilter.value));
  libraryCount.textContent='Showing '+shown.length+' of '+savedQRs.length+' saved QR codes.';
  if(!shown.length){const empty=document.createElement('p');empty.textContent='No saved QR codes in this view.';libraryList.append(empty);}
  for(const item of shown){
@@ -314,7 +323,7 @@ function renderLibrary(){
    });
    color.value=item.design.foreground;background.value=item.design.background;margin.value=String(item.design.margin);
    moduleStyle.value=item.moduleStyle;preset.value='custom';logoData='';logoFile.value='';
-   libraryTitle.value=item.title;libraryStatus.textContent='Loaded '+item.title+'.';
+   libraryTitle.value=item.title;libraryNewCollection.value=item.collection||'';libraryStatus.textContent='Loaded '+item.title+'.';
    void update();
   });
   const favorite=document.createElement('button');favorite.type='button';favorite.textContent=item.favorite?'★ Unfavorite':'☆ Favorite';
@@ -323,7 +332,12 @@ function renderLibrary(){
   const remove=document.createElement('button');remove.type='button';remove.textContent='Delete';
   remove.setAttribute('aria-label','Delete '+item.title);
   remove.addEventListener('click',()=>{if(window.confirm('Delete saved QR "'+item.title+'"?')&&persistLibrary(removeSaved(savedQRs,item.id)))renderLibrary();});
-  row.append(title,meta,load,favorite,remove);libraryList.append(row);
+  const collectionSelect=document.createElement('select');collectionSelect.setAttribute('aria-label','Collection for '+item.title);
+  collectionSelect.add(new Option('Unfiled',''));
+  for(const name of names)collectionSelect.add(new Option(name,name));
+  collectionSelect.value=item.collection||'';
+  collectionSelect.addEventListener('change',()=>{if(persistLibrary(assignCollection(savedQRs,item.id,collectionSelect.value)))renderLibrary();});
+  row.append(title,meta,load,favorite,collectionSelect,remove);libraryList.append(row);
  }
  libraryClear.disabled=savedQRs.length===0;
 }
@@ -332,12 +346,21 @@ librarySave.addEventListener('click',()=>{
  const title=libraryTitle.value.trim();
  if(!title){libraryStatus.textContent='Enter a name before saving.';libraryTitle.focus();return;}
  const entry:SavedQR={id:crypto.randomUUID(),title,kind:kind.value as QRKind,values:values(),
-  design:design(),moduleStyle:moduleStyle.value as ModuleStyle,createdAt:new Date().toISOString(),favorite:false};
+  design:design(),moduleStyle:moduleStyle.value as ModuleStyle,createdAt:new Date().toISOString(),favorite:false,
+  collection:normalizeCollection(libraryNewCollection.value)||undefined};
  if(persistLibrary(addSaved(savedQRs,entry))){
   renderLibrary();libraryStatus.textContent='Saved locally. Up to '+MAX_SAVED+' entries are kept.';
  }
 });
 libraryFilter.addEventListener('change',renderLibrary);
+libraryCollectionFilter.addEventListener('change',renderLibrary);
+libraryDeleteCollection.addEventListener('click',()=>{
+ const name=libraryCollectionFilter.value;
+ if(!name||name==='__unfiled__')return;
+ if(window.confirm('Delete collection "'+name+'"? Its QR codes will become unfiled, not deleted.')&&persistLibrary(removeCollection(savedQRs,name))){
+  libraryCollectionFilter.value='';renderLibrary();libraryStatus.textContent='Collection deleted. QR codes preserved.';
+ }
+});
 librarySearch.addEventListener('input',renderLibrary);
 librarySort.addEventListener('change',renderLibrary);
 libraryClear.addEventListener('click',()=>{
