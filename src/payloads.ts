@@ -1,4 +1,5 @@
-export type QRKind = 'url' | 'text' | 'wifi' | 'vcard' | 'email' | 'sms' | 'phone' | 'geo';
+import { cryptoPayload } from './crypto';
+export type QRKind = 'url' | 'text' | 'wifi' | 'vcard' | 'email' | 'sms' | 'phone' | 'geo' | 'bitcoin' | 'monero' | 'ethereum' | 'lightning' | 'solana';
 export const fields: Record<QRKind, Array<[string,string,string]>> = {
  url: [['url','Website URL','url']], text: [['text','Text','textarea']],
  wifi: [['ssid','Network name (SSID)','text'],['password','Password','password'],['security','Security: WPA, WEP or nopass','select'],['hidden','Hidden network','checkbox']],
@@ -6,7 +7,12 @@ export const fields: Record<QRKind, Array<[string,string,string]>> = {
  email: [['email','Email address','email'],['subject','Subject','text'],['body','Message','textarea']],
  sms: [['phone','Phone number','tel'],['message','Message','textarea']],
  phone: [['phone','Phone number','tel']],
- geo: [['lat','Latitude','text'],['lon','Longitude','text']]
+ geo: [['lat','Latitude','text'],['lon','Longitude','text']],
+ bitcoin: [['address','Bitcoin receiving address','text'],['amount','Amount in BTC (optional)','text']],
+ monero: [['address','Monero receiving address or subaddress','text'],['amount','Amount in XMR (optional)','text']],
+ ethereum: [['address','Ethereum address (0x...)','text']],
+ lightning: [['invoice','BOLT11 Lightning invoice','textarea']],
+ solana: [['address','Solana receiving address','text']]
 };
 const required = (value: string, label: string) => { if (!value.trim()) throw new Error(label + ' is required.'); return value.trim(); };
 const wifiEscape = (s: string) => s.replace(/([\\;,:"])/g, '\\$1');
@@ -15,6 +21,7 @@ const clean = (s: string) => s.replace(/[\r\n]/g,' ');
 export function buildPayload(kind: QRKind, values: Record<string,string>): string {
  const v = (key:string) => values[key] || '';
  switch(kind) {
+  case 'bitcoin': case 'monero': case 'ethereum': case 'lightning': case 'solana': return cryptoPayload(kind,values);
   case 'url': { const url = required(v('url'),'Website URL'); const parsed = new URL(url); if (!['http:','https:'].includes(parsed.protocol)) throw new Error('Use an HTTP or HTTPS URL.'); return url; }
   case 'text': return required(v('text'),'Text');
   case 'wifi': { const security = v('security') || 'WPA'; if (!['WPA','WEP','nopass'].includes(security)) throw new Error('Invalid Wi-Fi security type.'); return `WIFI:T:${security};S:${wifiEscape(required(v('ssid'),'Network name'))};P:${security === 'nopass' ? '' : wifiEscape(v('password'))};H:${v('hidden') === 'true' ? 'true' : 'false'};;`; }
